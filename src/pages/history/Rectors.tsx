@@ -1,53 +1,53 @@
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
-import MainLayout from "../layouts/MainLayout";
+import { motion } from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import MainLayout from '../../layouts/MainLayout';
 
 const RECTORS = [
 	{
 		id: 1,
-		name: "Иванов Иван Иванович",
-		years: "1940 — 1950",
+		name: 'Иванов Иван Иванович',
+		years: '1940 — 1950',
 		description:
-			"Первый ректор института. Заложил основы учебной и научной деятельности.",
-		img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQn2nmWoa-66Yo5xylQwIiAxtvMrK2pB2l4CA&s",
+			'Первый ректор института. Заложил основы учебной и научной деятельности.',
+		img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQn2nmWoa-66Yo5xylQwIiAxtvMrK2pB2l4CA&s',
 	},
 	{
 		id: 2,
-		name: "Петров Пётр Петрович",
-		years: "1950 — 1962",
-		description: "Расширил факультетскую базу, открыл новые специальности.",
-		img: "/images/rector2.jpg",
+		name: 'Петров Пётр Петрович',
+		years: '1950 — 1962',
+		description: 'Расширил факультетскую базу, открыл новые специальности.',
+		img: '/images/rector2.jpg',
 	},
 	{
 		id: 3,
-		name: "Сидоров Семён Семёнович",
-		years: "1962 — 1975",
-		description: "Провёл масштабную реорганизацию учебного процесса.",
-		img: "/images/rector3.jpg",
+		name: 'Сидоров Семён Семёнович',
+		years: '1962 — 1975',
+		description: 'Провёл масштабную реорганизацию учебного процесса.',
+		img: '/images/rector3.jpg',
 	},
 	{
 		id: 4,
-		name: "Козлов Андрей Николаевич",
-		years: "1975 — 1988",
-		description: "Руководил преобразованием института в университет.",
-		img: "/images/rector4.jpg",
+		name: 'Козлов Андрей Николаевич',
+		years: '1975 — 1988',
+		description: 'Руководил преобразованием института в университет.',
+		img: '/images/rector4.jpg',
 	},
 	{
 		id: 5,
-		name: "Михайлов Виктор Степанович",
-		years: "1988 — 2002",
+		name: 'Михайлов Виктор Степанович',
+		years: '1988 — 2002',
 		description:
-			"Развивал международные связи и научные школы университета.",
-		img: "/images/rector5.jpg",
+			'Развивал международные связи и научные школы университета.',
+		img: '/images/rector5.jpg',
 	},
 	{
 		id: 6,
-		name: "Романов Олег Александрович",
-		years: "2002 — настоящее время",
+		name: 'Романов Олег Александрович',
+		years: '2002 — настоящее время',
 		description:
-			"Под его руководством университет вышел на новый уровень развития.",
-		img: "/images/rector6.jpg",
+			'Под его руководством университет вышел на новый уровень развития.',
+		img: '/images/rector6.jpg',
 	},
 ];
 
@@ -65,8 +65,8 @@ export default function Rectors() {
 			setAtBottom(scrollHeight - scrollTop - clientHeight < 40);
 		};
 
-		el.addEventListener("scroll", handleScroll);
-		return () => el.removeEventListener("scroll", handleScroll);
+		el.addEventListener('scroll', handleScroll);
+		return () => el.removeEventListener('scroll', handleScroll);
 	}, []);
 
 	return (
@@ -82,9 +82,9 @@ export default function Rectors() {
 								key={rector.id}
 								initial={{ opacity: 0, x: isLeft ? -50 : 50 }}
 								whileInView={{ opacity: 1, x: 0 }}
-								viewport={{ once: true, margin: "-60px" }}
-								transition={{ duration: 0.4, ease: "easeOut" }}
-								className={`relative flex items-center ${isLeft ? "flex-row" : "flex-row-reverse"}`}
+								viewport={{ once: true, margin: '-60px' }}
+								transition={{ duration: 0.4, ease: 'easeOut' }}
+								className={`relative flex items-center ${isLeft ? 'flex-row' : 'flex-row-reverse'}`}
 							>
 								<button
 									onClick={() =>
@@ -109,7 +109,7 @@ export default function Rectors() {
 											onError={(e) => {
 												(
 													e.target as HTMLImageElement
-												).style.display = "none";
+												).style.display = 'none';
 											}}
 										/>
 									</div>
@@ -148,7 +148,7 @@ export default function Rectors() {
 					transition={{
 						duration: 1.5,
 						repeat: Infinity,
-						ease: "easeInOut",
+						ease: 'easeInOut',
 					}}
 					className="flex flex-col items-center gap-2"
 				>
@@ -161,7 +161,7 @@ export default function Rectors() {
 							transition={{
 								duration: 1.5,
 								repeat: Infinity,
-								ease: "easeInOut",
+								ease: 'easeInOut',
 							}}
 							className="w-1.5 h-3 bg-blue-400 rounded-full mt-1.5"
 						/>

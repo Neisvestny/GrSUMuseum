@@ -1,9 +1,9 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 
 const BUTTONS = [
-	{ label: "История развития ГрГУ", path: "/history/development" },
-	{ label: "Ректоры ГрГУ", path: "/history/rectors" },
-	{ label: "Купаловцы помнят", path: "/history/memory" },
+	{ label: 'История развития ГрГУ', path: '/history/development' },
+	{ label: 'Ректоры ГрГУ', path: '/history/rectors' },
+	{ label: 'Купаловцы помнят', path: '/history/memory' },
 ];
 
 export default function History() {

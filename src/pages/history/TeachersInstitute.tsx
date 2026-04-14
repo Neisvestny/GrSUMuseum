@@ -1,25 +1,31 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import MainLayout from "../layouts/MainLayout";
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
+import MainLayout from '../../layouts/MainLayout';
 
 const TABS = [
 	{
-		id: "teachers-institute",
-		label: "Гродненский учительский институт",
-		text: "Здесь будет текст про Гродненский учительский институт.",
-		img: "/images/teachers-institute.jpg",
+		id: '-gumnasium',
+		label: 'Гродненская мариинская гимназия',
+		text: 'Здесь будет текст про ??? гимназию.',
+		img: '/images/teachers-institute.jpg',
 	},
 	{
-		id: "pedagogical-institute",
-		label: "Гродненский государственный педагогический институт",
-		text: "Здесь будет текст про Гродненский государственный педагогический институт.",
-		img: "/images/pedagogical-institute.jpg",
+		id: 'teachers-institute',
+		label: 'Гродненский учительский институт',
+		text: 'Здесь будет текст про Гродненский учительский институт.',
+		img: '/images/teachers-institute.jpg',
 	},
 	{
-		id: "university",
-		label: "Гродненский государственный университет имени Янки Купалы",
-		text: "Здесь будет текст про ГрГУ имени Янки Купалы.",
-		img: "/images/university.jpg",
+		id: 'pedagogical-institute',
+		label: 'Гродненский государственный педагогический институт',
+		text: 'Здесь будет текст про Гродненский государственный педагогический институт.',
+		img: '/images/pedagogical-institute.jpg',
+	},
+	{
+		id: 'university',
+		label: 'Гродненский государственный университет имени Янки Купалы',
+		text: 'Здесь будет текст про ГрГУ имени Янки Купалы.',
+		img: '/images/university.jpg',
 	},
 ];
 
@@ -40,8 +46,8 @@ export default function HistoryDevelopment() {
 							transition-all duration-200 active:scale-95
 							${
 								activeTab === tab.id
-									? "bg-blue-700 border-blue-700 text-white shadow-lg"
-									: "bg-white/80 border-blue-200 text-blue-700 hover:border-blue-400 hover:bg-white"
+									? 'bg-blue-700 border-blue-700 text-white shadow-lg'
+									: 'bg-white/80 border-blue-200 text-blue-700 hover:border-blue-400 hover:bg-white'
 							}
 						`}
 					>
@@ -56,7 +62,7 @@ export default function HistoryDevelopment() {
 					initial={{ opacity: 0, y: 16 }}
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -16 }}
-					transition={{ duration: 0.25, ease: "easeOut" }}
+					transition={{ duration: 0.25, ease: 'easeOut' }}
 					className="h-full flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
 				>
 					{/* ТЕКСТ */}

@@ -1,11 +1,11 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 
 export default function ScreenSaver({ onDismiss }) {
 	const navigate = useNavigate();
 
 	const handleClick = () => {
 		onDismiss();
-		navigate("/");
+		navigate('/');
 	};
 
 	return (
@@ -19,7 +19,7 @@ export default function ScreenSaver({ onDismiss }) {
 				<div className="absolute w-64 h-64 rounded-full bg-blue-100 animate-ping opacity-30" />
 				<div
 					className="absolute w-48 h-48 rounded-full bg-blue-200 animate-ping opacity-40"
-					style={{ animationDelay: "0.5s" }}
+					style={{ animationDelay: '0.5s' }}
 				/>
 
 				{/* Основной круг */}

@@ -1,24 +1,24 @@
-import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 const BLOBS = [
-	{ w: 300, h: 250, left: "5%", top: "10%", x: 80, y: 60, duration: 14 },
-	{ w: 200, h: 200, left: "70%", top: "5%", x: -60, y: 80, duration: 18 },
-	{ w: 350, h: 300, left: "60%", top: "60%", x: -80, y: -60, duration: 12 },
-	{ w: 250, h: 200, left: "15%", top: "65%", x: 60, y: -80, duration: 16 },
-	{ w: 180, h: 180, left: "40%", top: "30%", x: -50, y: 70, duration: 20 },
-	{ w: 220, h: 280, left: "85%", top: "35%", x: -70, y: -50, duration: 15 },
-	{ w: 160, h: 160, left: "30%", top: "80%", x: 90, y: -40, duration: 11 },
+	{ w: 300, h: 250, left: '5%', top: '10%', x: 80, y: 60, duration: 14 },
+	{ w: 200, h: 200, left: '70%', top: '5%', x: -60, y: 80, duration: 18 },
+	{ w: 350, h: 300, left: '60%', top: '60%', x: -80, y: -60, duration: 12 },
+	{ w: 250, h: 200, left: '15%', top: '65%', x: 60, y: -80, duration: 16 },
+	{ w: 180, h: 180, left: '40%', top: '30%', x: -50, y: 70, duration: 20 },
+	{ w: 220, h: 280, left: '85%', top: '35%', x: -70, y: -50, duration: 15 },
+	{ w: 160, h: 160, left: '30%', top: '80%', x: 90, y: -40, duration: 11 },
 ];
 
 const BUTTONS = [
-	{ label: "История ГрГУ", path: "/history" },
-	{ label: "Спорт", path: "/sport" },
-	{ label: "Наука", path: "/science" },
-	{ label: "Студенческая жизнь", path: "/student-life" },
-	{ label: "Дипломогалерея", path: "/diploma-gallery" },
-	{ label: "Именные аудитории", path: "/named-rooms" },
-	{ label: "Видеогалерея", path: "/video-gallery" },
+	{ label: 'История ГрГУ', path: '/history' },
+	{ label: 'Спорт', path: '/sport' },
+	{ label: 'Наука', path: '/science' },
+	{ label: 'Студенческая жизнь', path: '/student-life' },
+	{ label: 'Фотогалерея', path: '/gallery' },
+	{ label: 'Именные аудитории', path: '/named-rooms' },
+	{ label: 'Видеогалерея', path: '/video-gallery' },
 ];
 
 export default function Home() {
@@ -37,7 +37,7 @@ export default function Home() {
 							height: blob.h,
 							left: blob.left,
 							top: blob.top,
-							filter: "blur(60px)",
+							filter: 'blur(60px)',
 						}}
 						animate={{
 							x: [0, blob.x, 0],
@@ -46,7 +46,7 @@ export default function Home() {
 						transition={{
 							duration: blob.duration,
 							repeat: Infinity,
-							ease: "easeInOut",
+							ease: 'easeInOut',
 						}}
 					/>
 				))}
