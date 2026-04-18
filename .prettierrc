@@ -1,8 +1,43 @@
 {
+	"$schema": "https://json.schemastore.org/prettierrc",
+
 	"useTabs": true,
 	"tabWidth": 4,
-	"plugins": ["prettier-plugin-organize-imports"],
+
 	"semi": true,
 	"singleQuote": true,
-	"trailingComma": "all"
+	"jsxSingleQuote": false,
+
+	"trailingComma": "all",
+
+	"printWidth": 100,
+	"arrowParens": "always",
+	"bracketSpacing": true,
+	"endOfLine": "lf",
+
+	"plugins": ["@ianvs/prettier-plugin-sort-imports", "prettier-plugin-sql"],
+
+	"overrides": [
+		{
+			"files": ["*.json", "*.yml", "*.yaml"],
+			"options": {
+				"useTabs": false,
+				"tabWidth": 2
+			}
+		},
+		{
+			"files": ["*.md"],
+			"options": {
+				"proseWrap": "always"
+			}
+		},
+		{
+			"files": ["*.sql"],
+			"options": {
+				"language": "postgresql",
+				"keywordCase": "upper",
+				"tabWidth": 4
+			}
+		}
+	]
 }

@@ -18,8 +18,7 @@ const VIDEOS: Video[] = [
 		id: 1,
 		src: '/videos/opening-ceremony.mp4',
 		title: 'Торжественное открытие',
-		description:
-			'Церемония открытия нового учебного корпуса факультета математики.',
+		description: 'Церемония открытия нового учебного корпуса факультета математики.',
 		tags: ['Мероприятия', 'Факультет'],
 		duration: '8:45',
 	},
@@ -77,11 +76,9 @@ function getYoutubeId(url: string): string | null {
 
 function getEmbedUrl(src: string): string | null {
 	const ytId = getYoutubeId(src);
-	if (ytId)
-		return `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`;
+	if (ytId) return `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&rel=0`;
 	const vimeoMatch = src.match(/vimeo\.com\/(\d+)/);
-	if (vimeoMatch)
-		return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
+	if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
 	return null;
 }
 
@@ -135,10 +132,7 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Видео */}
-				<div
-					className="relative bg-black"
-					style={{ aspectRatio: '16/9' }}
-				>
+				<div className="relative bg-black" style={{ aspectRatio: '16/9' }}>
 					{embedUrl ? (
 						<iframe
 							src={embedUrl}
@@ -148,12 +142,7 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
 							style={{ border: 'none', display: 'block' }}
 						/>
 					) : (
-						<video
-							src={video.src}
-							className="w-full h-full"
-							controls
-							autoPlay
-						/>
+						<video src={video.src} className="w-full h-full" controls autoPlay />
 					)}
 					<button
 						onClick={onClose}
@@ -174,8 +163,7 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
 				<div
 					className="p-6"
 					style={{
-						background:
-							'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
+						background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
 						borderTop: '2px solid #dbeafe',
 					}}
 				>
@@ -190,10 +178,7 @@ function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
 							>
 								{video.title}
 							</h3>
-							<p
-								className="text-sm leading-relaxed"
-								style={{ color: '#4b6fa8' }}
-							>
+							<p className="text-sm leading-relaxed" style={{ color: '#4b6fa8' }}>
 								{video.description}
 							</p>
 						</div>
@@ -280,23 +265,11 @@ function VideoCard({
 					<div
 						className="w-full h-full flex items-center justify-center"
 						style={{
-							background:
-								'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+							background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
 						}}
 					>
-						<svg
-							width="40"
-							height="40"
-							viewBox="0 0 40 40"
-							fill="none"
-						>
-							<circle
-								cx="20"
-								cy="20"
-								r="18"
-								fill="white"
-								fillOpacity="0.5"
-							/>
+						<svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+							<circle cx="20" cy="20" r="18" fill="white" fillOpacity="0.5" />
 							<path d="M16 13L28 20L16 27V13Z" fill="#3b82f6" />
 						</svg>
 					</div>
@@ -306,9 +279,7 @@ function VideoCard({
 				<div
 					className="absolute inset-0 flex items-center justify-center"
 					style={{
-						background: hovered
-							? 'rgba(30, 64, 175, 0.42)'
-							: 'rgba(30, 64, 175, 0.08)',
+						background: hovered ? 'rgba(30, 64, 175, 0.42)' : 'rgba(30, 64, 175, 0.08)',
 						transition: 'background 0.25s',
 					}}
 				>
@@ -316,9 +287,7 @@ function VideoCard({
 						style={{
 							width: 48,
 							height: 48,
-							background: hovered
-								? '#ffffff'
-								: 'rgba(255,255,255,0.75)',
+							background: hovered ? '#ffffff' : 'rgba(255,255,255,0.75)',
 							borderRadius: '50%',
 							display: 'flex',
 							alignItems: 'center',
@@ -445,9 +414,7 @@ function FilterBar({
 							border: 'none',
 							background: isActive ? '#1d4ed8' : 'transparent',
 							color: isActive ? '#ffffff' : '#3b6fd4',
-							boxShadow: isActive
-								? '0 4px 14px rgba(29, 78, 216, 0.35)'
-								: 'none',
+							boxShadow: isActive ? '0 4px 14px rgba(29, 78, 216, 0.35)' : 'none',
 							transform: isActive ? 'translateY(-1px)' : 'none',
 						}}
 					>
@@ -471,10 +438,7 @@ function FilterBar({
 					</button>
 				);
 			})}
-			<span
-				className="ml-auto pr-2 text-xs font-semibold"
-				style={{ color: '#6b8fc4' }}
-			>
+			<span className="ml-auto pr-2 text-xs font-semibold" style={{ color: '#6b8fc4' }}>
 				{count} видео
 			</span>
 		</div>
@@ -488,9 +452,7 @@ export default function VideoGallery() {
 	const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
 
 	const filtered =
-		activeTag === 'Все'
-			? VIDEOS
-			: VIDEOS.filter((v) => v.tags.includes(activeTag));
+		activeTag === 'Все' ? VIDEOS : VIDEOS.filter((v) => v.tags.includes(activeTag));
 
 	return (
 		<MainLayout title="Видеогалерея">
@@ -525,10 +487,7 @@ export default function VideoGallery() {
 
 			<AnimatePresence>
 				{selectedVideo && (
-					<VideoModal
-						video={selectedVideo}
-						onClose={() => setSelectedVideo(null)}
-					/>
+					<VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />
 				)}
 			</AnimatePresence>
 		</MainLayout>

@@ -30,10 +30,7 @@ export function useTeachers(section: 'vov' | 'afgan') {
 		return teacher;
 	};
 
-	const update = async (
-		position: number,
-		data: Partial<Teacher> & { position?: number },
-	) => {
+	const update = async (position: number, data: Partial<Teacher> & { position?: number }) => {
 		await api.updateTeacher(section, position, data);
 		await load();
 	};

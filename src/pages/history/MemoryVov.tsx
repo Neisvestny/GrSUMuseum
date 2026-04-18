@@ -15,38 +15,34 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 // Вкладка 1: Преподаватели
 // ─────────────────────────────────────────
 function TeachersTab({ section }: { section: 'vov' | 'afgan' }) {
-  const { teachers, loading, error } = useTeachers(section);
-  const [active, setActive] = useState<number | null>(null);
+	const { teachers, loading, error } = useTeachers(section);
+	const [active, setActive] = useState<number | null>(null);
 
-  const current = teachers.find((t) => t.id === (active ?? teachers[0]?.id));
+	const current = teachers.find((t) => t.id === (active ?? teachers[0]?.id));
 
-  if (loading) {
+	if (loading) {
+		return (
+			<div className="flex-1 flex items-center justify-center text-blue-600">
+				<div className="text-lg font-medium">Загрузка...</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return <div className="flex-1 flex items-center justify-center text-red-500">{error}</div>;
+	}
+
+	if (!teachers.length) {
+		return (
+			<div className="flex-1 flex items-center justify-center text-gray-400 text-lg">
+				Преподаватели не добавлены
+			</div>
+		);
+	}
+
 	return (
-	  <div className="flex-1 flex items-center justify-center text-blue-600">
-		<div className="text-lg font-medium">Загрузка...</div>
-	  </div>
-	);
-  }
-
-  if (error) {
-	return (
-	  <div className="flex-1 flex items-center justify-center text-red-500">
-		{error}
-	  </div>
-	);
-  }
-
-  if (!teachers.length) {
-	return (
-	  <div className="flex-1 flex items-center justify-center text-gray-400 text-lg">
-		Преподаватели не добавлены
-	  </div>
-	);
-  }
-
-  return (
-	<>
-	  <style>{`
+		<>
+			<style>{`
 		.teachers-scroll::-webkit-scrollbar {
 		  width: 4px;
 		}
@@ -66,78 +62,79 @@ function TeachersTab({ section }: { section: 'vov' | 'afgan' }) {
 		}
 	  `}</style>
 
-	  <div className="flex gap-6" style={{ height: 'calc(100vh - 220px)' }}>
-		{/* Боковая панель */}
-		<div className="flex flex-col gap-3 w-64 shrink-0 overflow-y-auto teachers-scroll pr-3 mr-1">
-		  {teachers.map((t) => {
-			const isActive = t.id === (active ?? teachers[0]?.id);
-			return (
-			  <button
-				key={t.id}
-				onClick={() => setActive(t.id)}
-				className={`
+			<div className="flex gap-6" style={{ height: 'calc(100vh - 220px)' }}>
+				{/* Боковая панель */}
+				<div className="flex flex-col gap-3 w-64 shrink-0 overflow-y-auto teachers-scroll pr-3 mr-1">
+					{teachers.map((t) => {
+						const isActive = t.id === (active ?? teachers[0]?.id);
+						return (
+							<button
+								key={t.id}
+								onClick={() => setActive(t.id)}
+								className={`
 				  text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 active:scale-95 shrink-0
 				  ${
-					isActive
-					  ? 'bg-blue-700 border-blue-700 text-white shadow-lg'
-					  : 'bg-white/80 border-blue-200 text-blue-800 hover:border-blue-400 hover:bg-white'
-				  }
+						isActive
+							? 'bg-blue-700 border-blue-700 text-white shadow-lg'
+							: 'bg-white/80 border-blue-200 text-blue-800 hover:border-blue-400 hover:bg-white'
+					}
 				`}
-			  >
-				<div className="font-semibold text-sm">{t.name}</div>
-				<div className={`text-xs mt-0.5 ${isActive ? 'text-blue-200' : 'text-gray-500'}`}>
-				  {t.role}
+							>
+								<div className="font-semibold text-sm">{t.name}</div>
+								<div
+									className={`text-xs mt-0.5 ${isActive ? 'text-blue-200' : 'text-gray-500'}`}
+								>
+									{t.role}
+								</div>
+							</button>
+						);
+					})}
 				</div>
-			  </button>
-			);
-		  })}
-		</div>
 
-		{/* Карточка преподавателя */}
-		<div className="flex-1 overflow-hidden">
-		  <AnimatePresence mode="wait">
-			{current && (
-			  <motion.div
-				key={current.id}
-				initial={{ opacity: 0, x: 20 }}
-				animate={{ opacity: 1, x: 0 }}
-				exit={{ opacity: 0, x: -20 }}
-				transition={{ duration: 0.25, ease: 'easeOut' }}
-				className="h-full flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
-			  >
-				{/* Фото — прибито к верхнему левому углу */}
-				<div className="w-56 h-64 shrink-0 self-start rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
-				  <img
-					src={current.img}
-					alt={current.name}
-					className="w-full h-full object-cover"
-					onError={(e) => {
-					  (e.target as HTMLImageElement).src =
-						'https://placehold.co/224x256/dbeafe/1e40af?text=Фото';
-					}}
-				  />
-				</div>
-				
+				{/* Карточка преподавателя */}
+				<div className="flex-1 overflow-hidden">
+					<AnimatePresence mode="wait">
+						{current && (
+							<motion.div
+								key={current.id}
+								initial={{ opacity: 0, x: 20 }}
+								animate={{ opacity: 1, x: 0 }}
+								exit={{ opacity: 0, x: -20 }}
+								transition={{ duration: 0.25, ease: 'easeOut' }}
+								className="h-full flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
+							>
+								{/* Фото — прибито к верхнему левому углу */}
+								<div className="w-56 h-64 shrink-0 self-start rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
+									<img
+										src={current.img}
+										alt={current.name}
+										className="w-full h-full object-cover"
+										onError={(e) => {
+											(e.target as HTMLImageElement).src =
+												'https://placehold.co/224x256/dbeafe/1e40af?text=Фото';
+										}}
+									/>
+								</div>
 
-				{/* Текст */}
-				<div className="flex flex-col overflow-y-auto">
-				  <h2 className="text-blue-700 font-bold text-2xl mb-1">
-					{current.name}
-				  </h2>
-				  <p className="text-blue-500 font-medium text-sm mb-4">
-					{current.role}
-				  </p>
-				  <p className="text-gray-600 text-lg leading-relaxed">
-					{current.desc}
-				  </p>
+								{/* Текст */}
+								<div className="flex flex-col overflow-y-auto">
+									<h2 className="text-blue-700 font-bold text-2xl mb-1">
+										{current.name}
+									</h2>
+									<p className="text-blue-500 font-medium text-sm mb-4">
+										{current.role}
+									</p>
+									<p className="text-gray-600 text-lg leading-relaxed">
+										{current.desc}
+									</p>
+								</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
-			  </motion.div>
-			)}
-		  </AnimatePresence>
-		</div>
-	  </div>
-	</>
-  );
+			</div>
+		</>
+	);
 }
 
 // ─────────────────────────────────────────
@@ -160,10 +157,7 @@ async function openDb(): Promise<IDBDatabase> {
 async function getCached(): Promise<string[] | null> {
 	const db = await openDb();
 	return new Promise((resolve) => {
-		const req = db
-			.transaction(DB_STORE, 'readonly')
-			.objectStore(DB_STORE)
-			.get(DB_KEY);
+		const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(DB_KEY);
 		req.onsuccess = () => resolve(req.result ?? null);
 		req.onerror = () => resolve(null);
 	});
@@ -172,48 +166,33 @@ async function getCached(): Promise<string[] | null> {
 async function saveCache(pages: string[]): Promise<void> {
 	const db = await openDb();
 	return new Promise((resolve) => {
-		const req = db
-			.transaction(DB_STORE, 'readwrite')
-			.objectStore(DB_STORE)
-			.put(pages, DB_KEY);
+		const req = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(pages, DB_KEY);
 		req.onsuccess = () => resolve();
 		req.onerror = () => resolve();
 	});
 }
 
-const FlipPage = React.forwardRef<
-	HTMLDivElement,
-	{ src: string; pageNum: number }
->(({ src, pageNum }, ref) => (
-	<div
-		ref={ref}
-		className="bg-amber-50 border border-amber-200 overflow-hidden"
-	>
-		<img
-			src={src}
-			alt={`Страница ${pageNum}`}
-			className="w-full h-full object-contain"
-		/>
-	</div>
-));
-FlipPage.displayName = 'FlipPage';
-
-const CoverPage = React.forwardRef<HTMLDivElement, Record<string, never>>(
-	(_, ref) => (
-		<div
-			ref={ref}
-			className="w-full h-full bg-gradient-to-br from-blue-900 to-blue-800 flex items-center justify-centert"
-		>
-			<div className="text-center text-white px-8">
-				<div className="text-6xl mb-4">📖</div>
-				<h3 className="font-bold text-xl leading-snug">
-					Великая Отечественная Война
-				</h3>
-				<p className="text-blue-300 text-sm mt-2">Архивный документ</p>
-			</div>
+const FlipPage = React.forwardRef<HTMLDivElement, { src: string; pageNum: number }>(
+	({ src, pageNum }, ref) => (
+		<div ref={ref} className="bg-amber-50 border border-amber-200 overflow-hidden">
+			<img src={src} alt={`Страница ${pageNum}`} className="w-full h-full object-contain" />
 		</div>
 	),
 );
+FlipPage.displayName = 'FlipPage';
+
+const CoverPage = React.forwardRef<HTMLDivElement, Record<string, never>>((_, ref) => (
+	<div
+		ref={ref}
+		className="w-full h-full bg-gradient-to-br from-blue-900 to-blue-800 flex items-center justify-centert"
+	>
+		<div className="text-center text-white px-8">
+			<div className="text-6xl mb-4">📖</div>
+			<h3 className="font-bold text-xl leading-snug">Великая Отечественная Война</h3>
+			<p className="text-blue-300 text-sm mt-2">Архивный документ</p>
+		</div>
+	</div>
+));
 CoverPage.displayName = 'CoverPage';
 
 const PDF_PATH = '/book.pdf';
@@ -221,9 +200,7 @@ const SCALE = 1.4;
 
 function BookReader() {
 	const [pages, setPages] = useState<string[]>([]); // dataURL для каждой страницы
-	const [status, setStatus] = useState<'loading' | 'error' | 'ready'>(
-		'loading',
-	);
+	const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 	const [progress, setProgress] = useState({ loaded: 0, total: 0 });
 	const [currentPage, setCurrentPage] = useState(0);
 	const bookRef = useRef<any>(null);
@@ -255,8 +232,7 @@ function BookReader() {
 					canvas.width = viewport.width;
 					canvas.height = viewport.height;
 					const ctx = canvas.getContext('2d')!;
-					await page.render({ canvasContext: ctx, viewport, canvas })
-						.promise;
+					await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 					dataUrls.push(canvas.toDataURL());
 					setProgress({ loaded: i, total });
 				}
@@ -273,17 +249,12 @@ function BookReader() {
 	}, []);
 
 	if (status === 'loading') {
-		const pct =
-			progress.total > 0
-				? Math.round((progress.loaded / progress.total) * 100)
-				: 0;
+		const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
 
 		return (
 			<div className="flex-1 flex items-center justify-center text-blue-600">
 				<div className="flex flex-col items-center gap-4 w-72">
-					<div className="text-lg font-medium">
-						Загрузка документа…
-					</div>
+					<div className="text-lg font-medium">Загрузка документа…</div>
 
 					{/* Прогресс бар */}
 					<div className="w-full bg-blue-100 rounded-full h-3 overflow-hidden">
@@ -309,8 +280,7 @@ function BookReader() {
 				<div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-red-700 text-center max-w-md">
 					<div className="text-4xl mb-3">⚠️</div>
 					<p className="font-semibold">
-						Не удалось загрузить PDF. Убедитесь что файл лежит в
-						public/book.pdf
+						Не удалось загрузить PDF. Убедитесь что файл лежит в public/book.pdf
 					</p>
 				</div>
 			</div>
@@ -430,11 +400,7 @@ export default function MemoryVov() {
 					transition={{ duration: 0.2 }}
 					className="flex-1 flex flex-col min-h-0"
 				>
-					{activeTab === 'teachers' ? (
-						<TeachersTab section="vov" />
-					) : (
-						<BookReader />
-					)}
+					{activeTab === 'teachers' ? <TeachersTab section="vov" /> : <BookReader />}
 				</motion.div>
 			</AnimatePresence>
 		</MainLayout>

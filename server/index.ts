@@ -1,16 +1,16 @@
-import 'dotenv/config';
-
 import cors from 'cors';
-import express from 'express';
+import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { teachersRouter } from './routes/teachers.router';
+import express from 'express';
+import { env } from './env';
 import { rectorsRouter } from './routes/rectors.router';
+import { teachersRouter } from './routes/teachers.router';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
-const PORT = process.env.PORT ?? 3001;
+const PORT = env.PORT;
 
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());

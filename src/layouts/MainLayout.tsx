@@ -16,11 +16,7 @@ type PageTemplateProps = {
 	children: ReactNode;
 };
 
-export default function MainLayout({
-	title,
-	scrollRef,
-	children,
-}: PageTemplateProps) {
+export default function MainLayout({ title, scrollRef, children }: PageTemplateProps) {
 	const navigate = useNavigate();
 
 	return (
@@ -61,11 +57,7 @@ export default function MainLayout({
 						}}
 						className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-blue-200 bg-white/80 hover:bg-blue-700 hover:text-white hover:border-blue-700 text-blue-700 font-semibold transition-all duration-200 active:scale-95"
 					>
-						<svg
-							viewBox="0 0 20 20"
-							className="w-4 h-4"
-							fill="none"
-						>
+						<svg viewBox="0 0 20 20" className="w-4 h-4" fill="none">
 							<path
 								d="M15 10H5M5 10l5-5M5 10l5 5"
 								stroke="currentColor"
@@ -80,10 +72,7 @@ export default function MainLayout({
 				</nav>
 			)}
 
-			<main
-				ref={scrollRef}
-				className="relative z-10 flex-1 overflow-y-auto px-8 pt-5 pb-10"
-			>
+			<main ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-8 pt-5 pb-10">
 				{children}
 			</main>
 		</div>

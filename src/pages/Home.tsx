@@ -61,11 +61,7 @@ export default function Home() {
 
 				<div className="z-2 flex flex-wrap justify-center gap-6 max-w-[calc(4*320px+3*24px)]">
 					{BUTTONS.map((btn) => (
-						<NavButton
-							key={btn.path}
-							btn={btn}
-							navigate={navigate}
-						/>
+						<NavButton key={btn.path} btn={btn} navigate={navigate} />
 					))}
 				</div>
 			</main>

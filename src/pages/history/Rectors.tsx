@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MainLayout from '../../layouts/MainLayout';
 import { useRectors } from '../../hooks/useRectors';
+import MainLayout from '../../layouts/MainLayout';
 
 // const RECTORS = [
 // 	{
@@ -89,11 +89,7 @@ export default function Rectors() {
 								className={`relative flex items-center ${isLeft ? 'flex-row' : 'flex-row-reverse'}`}
 							>
 								<button
-									onClick={() =>
-										navigate(
-											`/history/rectors/${rector.id}`,
-										)
-									}
+									onClick={() => navigate(`/history/rectors/${rector.id}`)}
 									className="
                                     w-[calc(50%-2.5rem)] flex gap-6 items-center
                                     bg-white/80 backdrop-blur-sm
@@ -109,9 +105,8 @@ export default function Rectors() {
 											alt={rector.name}
 											className="w-full h-full object-cover"
 											onError={(e) => {
-												(
-													e.target as HTMLImageElement
-												).style.display = 'none';
+												(e.target as HTMLImageElement).style.display =
+													'none';
 											}}
 										/>
 									</div>
@@ -154,9 +149,7 @@ export default function Rectors() {
 					}}
 					className="flex flex-col items-center gap-2"
 				>
-					<span className="text-blue-400 text-sm font-medium">
-						листайте
-					</span>
+					<span className="text-blue-400 text-sm font-medium">листайте</span>
 					<div className="w-6 h-10 border-2 border-blue-400 rounded-full flex justify-center">
 						<motion.div
 							animate={{ y: [0, 12, 0] }}

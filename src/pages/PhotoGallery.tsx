@@ -30,16 +30,14 @@ const PHOTOS: Photo[] = [
 		year: 1940,
 		src: '/gallery/1940-2.jpg',
 		title: 'Лекция по физике',
-		annotation:
-			'Профессор Николаев ведёт занятие в аудитории №12. Полный зал студентов.',
+		annotation: 'Профессор Николаев ведёт занятие в аудитории №12. Полный зал студентов.',
 	},
 	{
 		id: 3,
 		year: 1940,
 		src: '/gallery/1940-3.jpg',
 		title: 'Студенческий актив',
-		annotation:
-			'Заседание комсомольского бюро факультета математики и естественных наук.',
+		annotation: 'Заседание комсомольского бюро факультета математики и естественных наук.',
 	},
 	{
 		id: 4,
@@ -95,16 +93,14 @@ const PHOTOS: Photo[] = [
 		year: 1944,
 		src: '/gallery/1944-3.jpg',
 		title: 'Восстановительные работы',
-		annotation:
-			'Студенты и преподаватели участвуют в восстановлении учебных корпусов.',
+		annotation: 'Студенты и преподаватели участвуют в восстановлении учебных корпусов.',
 	},
 	{
 		id: 9,
 		year: 1945,
 		src: '/gallery/1945-1.jpg',
 		title: 'День Победы',
-		annotation:
-			'9 мая 1945. Ликование на площади перед университетом. Слёзы радости и горя.',
+		annotation: '9 мая 1945. Ликование на площади перед университетом. Слёзы радости и горя.',
 	},
 	{
 		id: 10,
@@ -119,16 +115,14 @@ const PHOTOS: Photo[] = [
 		year: 1945,
 		src: '/gallery/1945-3.jpg',
 		title: 'Памятный митинг',
-		annotation:
-			'Торжественное собрание в честь Победы. Минута молчания по погибшим коллегам.',
+		annotation: 'Торжественное собрание в честь Победы. Минута молчания по погибшим коллегам.',
 	},
 	{
 		id: 12,
 		year: 1945,
 		src: '/gallery/1945-4.jpg',
 		title: 'Новый учебный год',
-		annotation:
-			'Сентябрь 1945. Первый послевоенный набор студентов. Жизнь продолжается.',
+		annotation: 'Сентябрь 1945. Первый послевоенный набор студентов. Жизнь продолжается.',
 	},
 ];
 
@@ -146,15 +140,7 @@ function groupByYear(photos: Photo[]): YearBlock[] {
 }
 
 // ─── Лайтбокс ───────────────────────────
-function Lightbox({
-	photo,
-	year,
-	onClose,
-}: {
-	photo: Photo;
-	year: number;
-	onClose: () => void;
-}) {
+function Lightbox({ photo, year, onClose }: { photo: Photo; year: number; onClose: () => void }) {
 	return (
 		<motion.div
 			initial={{ opacity: 0 }}
@@ -175,8 +161,7 @@ function Lightbox({
 				className="relative z-10 max-w-3xl w-full mx-6 bg-stone-900 border border-stone-700/60 shadow-2xl"
 				onClick={(e) => e.stopPropagation()}
 				style={{
-					boxShadow:
-						'0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.8)',
+					boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.8)',
 				}}
 			>
 				{/* Фото */}
@@ -275,10 +260,7 @@ function PhotoCard({
 			}}
 		>
 			{/* Фото */}
-			<div
-				className="relative overflow-hidden bg-stone-950"
-				style={{ aspectRatio: '4/3' }}
-			>
+			<div className="relative overflow-hidden bg-stone-950" style={{ aspectRatio: '4/3' }}>
 				<img
 					src={photo.src}
 					alt={photo.title}
@@ -336,13 +318,7 @@ function PhotoCard({
 }
 
 // ─── Блок года ──────────────────────────
-function YearSection({
-	block,
-	globalIndex,
-}: {
-	block: YearBlock;
-	globalIndex: number;
-}) {
+function YearSection({ block, globalIndex }: { block: YearBlock; globalIndex: number }) {
 	const [selected, setSelected] = useState<Photo | null>(null);
 
 	return (
@@ -428,11 +404,7 @@ export default function PhotoGallery() {
 
 			<div className="overflow-y-auto flex-1 pr-1">
 				{gallery.map((block, i) => (
-					<YearSection
-						key={block.year}
-						block={block}
-						globalIndex={i}
-					/>
+					<YearSection key={block.year} block={block} globalIndex={i} />
 				))}
 			</div>
 		</MainLayout>

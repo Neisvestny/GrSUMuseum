@@ -12,15 +12,8 @@ import TeachersInstitute from './pages/history/TeachersInstitute.tsx';
 import Home from './pages/Home.tsx';
 import PhotoGallery from './pages/PhotoGallery.tsx';
 import RectorDetails from './pages/RectorDetails.tsx';
-import VideoGallery from './pages/VideoGallery.tsx';
 import RectorsAdmin from './pages/RectorsAdmin.tsx';
-
-// import Sport from './pages/Sport'
-// import Science from './pages/Science'
-// import StudentLife from './pages/StudentLife'
-// import NamedRooms from './pages/NamedRooms'
-// import VideoGallery from './pages/VideoGallery'
-// import DiplomaGallery from './pages/DiplomaGallery'
+import VideoGallery from './pages/VideoGallery.tsx';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
 
@@ -50,9 +43,7 @@ export default function App() {
 
 		return () => {
 			clearTimeout(timer);
-			events.forEach((e) =>
-				window.removeEventListener(e, handleActivity),
-			);
+			events.forEach((e) => window.removeEventListener(e, handleActivity));
 		};
 	}, []);
 
@@ -96,15 +87,9 @@ export default function App() {
 
 				<Route path="/" element={<Home />} />
 				<Route path="/history" element={<History />} />
-				<Route
-					path="/history/development"
-					element={<TeachersInstitute />}
-				/>
+				<Route path="/history/development" element={<TeachersInstitute />} />
 				<Route path="/history/rectors" element={<Rectors />} />
-				<Route
-					path="/history/rectors/:id"
-					element={<RectorDetails />}
-				/>
+				<Route path="/history/rectors/:id" element={<RectorDetails />} />
 				<Route path="/history/memory" element={<Memory />} />
 				<Route path="/history/memory/afgan" element={<MemoryAfgan />} />
 				<Route path="/history/memory/vov" element={<MemoryVov />} />

@@ -1,11 +1,12 @@
 import { Pool } from 'pg';
+import { env } from './env';
 
 export const pool = new Pool({
-	host: process.env.DB_HOST ?? 'localhost',
-	port: Number(process.env.DB_PORT ?? 5432),
-	database: process.env.DB_NAME ?? 'museum',
-	user: process.env.DB_USER ?? 'postgres',
-	password: process.env.DB_PASSWORD ?? '',
+	host: env.DB_HOST,
+	port: env.DB_PORT,
+	database: env.DB_NAME,
+	user: env.DB_USER,
+	password: env.DB_PASSWORD,
 });
 
 pool.on('error', (err) => {

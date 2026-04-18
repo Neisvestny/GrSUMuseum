@@ -13,18 +13,12 @@ export default function History() {
 		<div className="w-screen h-screen bg-white flex flex-col">
 			<main className="flex-1 flex flex-col items-center justify-center gap-8 px-16">
 				<header className="text-center">
-					<p className="text-gray-500 text-2xl font-bold">
-						История ГрГУ
-					</p>
+					<p className="text-gray-500 text-2xl font-bold">История ГрГУ</p>
 				</header>
 
 				<div className="flex flex-col gap-5 w-full max-w-3xl">
 					{BUTTONS.map((btn) => (
-						<NavButton
-							key={btn.path}
-							btn={btn}
-							navigate={navigate}
-						/>
+						<NavButton key={btn.path} btn={btn} navigate={navigate} />
 					))}
 				</div>
 

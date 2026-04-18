@@ -1,0 +1,37 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+
+  "editor.tabSize": 4,
+  "editor.insertSpaces": false,
+
+  "files.eol": "\n",
+
+  // Prettier
+  "prettier.requireConfig": true,
+
+  // Отключить встроенный formatter
+  "js/ts.format.enabled": false,
+
+  // Явно указываем Prettier
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[sql]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // Импорты
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+}
