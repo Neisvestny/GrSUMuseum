@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import * as pdfjsLib from 'pdfjs-dist';
 import React, { useEffect, useRef, useState } from 'react';
 import HTMLFlipBook from 'react-pageflip';
+import { useTeachers } from '../../hooks/useTeachers';
 import MainLayout from '../../layouts/MainLayout';
 
 // Указываем путь к воркеру pdfjs
@@ -13,95 +14,101 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 // ─────────────────────────────────────────
 // Вкладка 1: Преподаватели
 // ─────────────────────────────────────────
+function TeachersTab({ section }: { section: 'vov' | 'afgan' }) {
+	const { teachers, loading, error } = useTeachers(section);
+	const [active, setActive] = useState<number | null>(null);
 
-const TEACHERS = [
-	{
-		id: 1,
-		name: 'Иванов Иван Иванович',
-		role: 'Профессор кафедры математики',
-		desc: 'Участник Великой Отечественной войны. После победы вернулся в университет и посвятил жизнь науке.',
-		img: '/images/teacher-1.jpg',
-	},
-	{
-		id: 2,
-		name: 'Петрова Мария Степановна',
-		role: 'Доцент кафедры истории',
-		desc: 'Ветеран труда, воспитала несколько поколений историков. Её лекции помнят выпускники до сих пор.',
-		img: '/images/teacher-2.jpg',
-	},
-	{
-		id: 3,
-		name: 'Сидоров Николай Фёдорович',
-		role: 'Заведующий кафедрой физики',
-		desc: 'Доктор физико-математических наук. Внёс вклад в развитие ядерной физики в послевоенные годы.',
-		img: '/images/teacher-3.jpg',
-	},
-];
+	const current = teachers.find((t) => t.id === (active ?? teachers[0]?.id));
 
-function TeachersTab() {
-	const [active, setActive] = useState(TEACHERS[0].id);
-	const current = TEACHERS.find((t) => t.id === active)!;
+	if (loading) {
+		return (
+			<div className="flex-1 flex items-center justify-center text-blue-600">
+				<div className="text-lg font-medium">Загрузка...</div>
+			</div>
+		);
+	}
+
+	if (error) {
+		return (
+			<div className="flex-1 flex items-center justify-center text-red-500">
+				{error}
+			</div>
+		);
+	}
+
+	if (!teachers.length) {
+		return (
+			<div className="flex-1 flex items-center justify-center text-gray-400 text-lg">
+				Преподаватели не добавлены
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex gap-6 h-full">
-			{/* Список */}
 			<div className="flex flex-col gap-3 w-64 shrink-0">
-				{TEACHERS.map((t) => (
-					<button
-						key={t.id}
-						onClick={() => setActive(t.id)}
-						className={`
-							text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 active:scale-95
-							${
-								active === t.id
-									? 'bg-blue-700 border-blue-700 text-white shadow-lg'
-									: 'bg-white/80 border-blue-200 text-blue-800 hover:border-blue-400 hover:bg-white'
-							}
-						`}
-					>
-						<div className="font-semibold text-sm">{t.name}</div>
-						<div
-							className={`text-xs mt-0.5 ${active === t.id ? 'text-blue-200' : 'text-gray-500'}`}
+				{teachers.map((t) => {
+					const isActive = t.id === (active ?? teachers[0]?.id);
+					return (
+						<button
+							key={t.id}
+							onClick={() => setActive(t.id)}
+							className={`
+                text-left px-4 py-3 rounded-xl border-2 transition-all duration-200 active:scale-95
+                ${
+					isActive
+						? 'bg-blue-700 border-blue-700 text-white shadow-lg'
+						: 'bg-white/80 border-blue-200 text-blue-800 hover:border-blue-400 hover:bg-white'
+				}
+              `}
 						>
-							{t.role}
-						</div>
-					</button>
-				))}
+							<div className="font-semibold text-sm">
+								{t.name}
+							</div>
+							<div
+								className={`text-xs mt-0.5 ${isActive ? 'text-blue-200' : 'text-gray-500'}`}
+							>
+								{t.role}
+							</div>
+						</button>
+					);
+				})}
 			</div>
 
-			{/* Контент */}
 			<AnimatePresence mode="wait">
-				<motion.div
-					key={active}
-					initial={{ opacity: 0, x: 20 }}
-					animate={{ opacity: 1, x: 0 }}
-					exit={{ opacity: 0, x: -20 }}
-					transition={{ duration: 0.25, ease: 'easeOut' }}
-					className="flex-1 flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
-				>
-					<div className="w-56 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
-						<img
-							src={current.img}
-							alt={current.name}
-							className="w-full h-full object-cover"
-							onError={(e) => {
-								(e.target as HTMLImageElement).src =
-									'https://placehold.co/224x280/dbeafe/1e40af?text=Фото';
-							}}
-						/>
-					</div>
-					<div className="flex flex-col justify-center">
-						<h2 className="text-blue-700 font-bold text-2xl mb-1">
-							{current.name}
-						</h2>
-						<p className="text-blue-500 font-medium text-sm mb-4">
-							{current.role}
-						</p>
-						<p className="text-gray-600 text-lg leading-relaxed">
-							{current.desc}
-						</p>
-					</div>
-				</motion.div>
+				{current && (
+					<motion.div
+						key={current.id}
+						initial={{ opacity: 0, x: 20 }}
+						animate={{ opacity: 1, x: 0 }}
+						exit={{ opacity: 0, x: -20 }}
+						transition={{ duration: 0.25, ease: 'easeOut' }}
+						className="flex-1 flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
+					>
+						<div className="w-56 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
+							<img
+								src={current.img}
+								alt={current.name}
+								className="w-full h-full object-cover"
+								onError={(e) => {
+									(e.target as HTMLImageElement).src =
+										'https://placehold.co/224x280/dbeafe/1e40af?text=Фото';
+								}}
+							/>
+						</div>
+						<div className="flex flex-col justify-center">
+							<h2 className="text-blue-700 font-bold text-2xl mb-1">
+								{current.name}
+							</h2>
+							<p className="text-blue-500 font-medium text-sm mb-4">
+								{current.role}
+							</p>
+							<p className="text-gray-600 text-lg leading-relaxed">
+								{current.desc}
+							</p>
+						</div>
+					</motion.div>
+				)}
 			</AnimatePresence>
 		</div>
 	);
@@ -398,7 +405,7 @@ export default function MemoryAfgan() {
 					className="flex-1 flex flex-col min-h-0"
 				>
 					{activeTab === 'teachers' ? (
-						<TeachersTab />
+						<TeachersTab section="afgan" />
 					) : (
 						<BookReader />
 					)}

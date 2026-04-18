@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import ScreenSaver from './components/ScreenSaver.tsx';
 import './index.css';
+import AdminPanel from './pages/AdminPanel.tsx';
 import History from './pages/history/History.tsx';
 import Memory from './pages/history/Memory.tsx';
 import MemoryAfgan from './pages/history/MemoryAfgan.tsx';
@@ -90,6 +91,8 @@ export default function App() {
 		<>
 			{isIdle && <ScreenSaver onDismiss={resetTimer} />}
 			<Routes>
+				<Route path="/admin" element={<AdminPanel />} />
+
 				<Route path="/" element={<Home />} />
 				<Route path="/history" element={<History />} />
 				<Route
