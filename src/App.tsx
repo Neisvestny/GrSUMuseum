@@ -4,6 +4,8 @@ import ScreenSaver from './components/ScreenSaver.tsx';
 import './index.css';
 import History from './pages/history/History.tsx';
 import Memory from './pages/history/Memory.tsx';
+import MemoryAfgan from './pages/history/MemoryAfgan.tsx';
+import MemoryVov from './pages/history/MemoryVov.tsx';
 import Rectors from './pages/history/Rectors.tsx';
 import TeachersInstitute from './pages/history/TeachersInstitute.tsx';
 import Home from './pages/Home.tsx';
@@ -100,6 +102,8 @@ export default function App() {
 					element={<RectorDetails />}
 				/>
 				<Route path="/history/memory" element={<Memory />} />
+				<Route path="/history/memory/afgan" element={<MemoryAfgan />} />
+				<Route path="/history/memory/vov" element={<MemoryVov />} />
 				<Route path="/gallery" element={<PhotoGallery />} />
 				<Route path="/video-gallery" element={<VideoGallery />} />
 				{/* <Route path="/sport" element={<Sport />} />
