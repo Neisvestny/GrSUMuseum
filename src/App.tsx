@@ -13,6 +13,7 @@ import Home from './pages/Home.tsx';
 import PhotoGallery from './pages/PhotoGallery.tsx';
 import RectorDetails from './pages/RectorDetails.tsx';
 import VideoGallery from './pages/VideoGallery.tsx';
+import RectorsAdmin from './pages/RectorsAdmin.tsx';
 
 // import Sport from './pages/Sport'
 // import Science from './pages/Science'
@@ -109,6 +110,7 @@ export default function App() {
 				<Route path="/history/memory/vov" element={<MemoryVov />} />
 				<Route path="/gallery" element={<PhotoGallery />} />
 				<Route path="/video-gallery" element={<VideoGallery />} />
+				<Route path="/radmin" element={<RectorsAdmin />} />
 				{/* <Route path="/sport" element={<Sport />} />
         <Route path="/science" element={<Science />} />
         <Route path="/student-life" element={<StudentLife />} />

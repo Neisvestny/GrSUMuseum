@@ -5,6 +5,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { teachersRouter } from './routes/teachers.router';
+import { rectorsRouter } from './routes/rectors.router';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +17,7 @@ app.use(express.json());
 
 // API
 app.use('/api/teachers', teachersRouter);
-
+app.use('/api/rectors', rectorsRouter);
 // Статика в проде
 app.use(express.static(path.join(__dirname, '../dist/client')));
 app.get('/', (_req, res) => {
