@@ -14,9 +14,13 @@ import PhotoGallery from './pages/PhotoGallery.tsx';
 import RectorDetails from './pages/RectorDetails.tsx';
 import RectorsAdmin from './pages/RectorsAdmin.tsx';
 import HallOfFame from './pages/sport/HallOfFame.tsx';
-import StudentSport from './pages/sport/StudentSport.tsx';
 import Sport from './pages/sport/Sport.tsx';
+import StudentSport from './pages/sport/StudentSport.tsx';
 import Trainers from './pages/sport/Trainers.tsx';
+import SocialLife from './pages/studentlife/SocialLife.tsx';
+import StudentInitiatives from './pages/studentlife/StudentInitiatives.tsx';
+import StudentLife from './pages/studentlife/StudentLife.tsx';
+import StudentsWorkTeams from './pages/studentlife/StudentsWorkTeams.tsx';
 import VideoGallery from './pages/VideoGallery.tsx';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
@@ -104,6 +108,10 @@ export default function App() {
 				<Route path="/gallery" element={<PhotoGallery />} />
 				<Route path="/video-gallery" element={<VideoGallery />} />
 				<Route path="/radmin" element={<RectorsAdmin />} />
+				<Route path="/studentlife" element={<StudentLife />} />
+				<Route path="/studentlife/students-work-teams" element={<StudentsWorkTeams />} />
+				<Route path="/studentlife/social-life" element={<SocialLife />} />
+				<Route path="/studentlife/student-initiatives" element={<StudentInitiatives />} />
 				{/* <Route path="/science" element={<Science />} />
         <Route path="/student-life" element={<StudentLife />} />
         <Route path="/named-rooms" element={<NamedRooms />} />

@@ -1,25 +1,24 @@
 import { useNavigate } from 'react-router-dom';
 
 const BUTTONS = [
-	{ label: 'Зал славы', path: '/sport/hall-of-fame' },
-	{ label: 'Студенческий спорт', path: '/sport/student-sport' },
-	{ label: 'Тренеры', path: '/sport/trainers' },
-	{ label: 'Фотогалерея', path: '' },
+	{ label: 'Студенческие отряды', path: '/studentlife/students-work-teams' },
+	{ label: 'Общественная жизнь', path: '/studentlife/social-life' },
+	{ label: 'Студенческие инициативы, проекты, конкурсы', path: '/studentlife/student-initiatives' },
 ];
 
-export default function Sport() {
+export default function StudentLife() {
 	const navigate = useNavigate();
 
 	return (
 		<div className="w-screen h-screen bg-white flex flex-col">
 			<main className="flex-1 flex flex-col items-center justify-center gap-8 px-16">
 				<header className="text-center">
-					<p className="text-gray-500 text-2xl font-bold">Спорт</p>
+					<p className="text-gray-500 text-2xl font-bold">Студенческая и общетсвеннная жизнь</p>
 				</header>
 
 				<div className="flex flex-col gap-5 w-full max-w-3xl">
 					{BUTTONS.map((btn) => (
-						<NavButton key={btn.label} btn={btn} navigate={navigate} />
+						<NavButton key={btn.path} btn={btn} navigate={navigate} />
 					))}
 				</div>
 
@@ -50,7 +49,7 @@ function NavButton({
 }) {
 	return (
 		<button
-			onClick={() => btn.path && navigate(btn.path)}
+			onClick={() => navigate(btn.path)}
 			className="
 				w-full h-36
 				rounded-2xl border-2 border-blue-200
