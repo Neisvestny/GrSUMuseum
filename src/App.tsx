@@ -13,6 +13,10 @@ import Home from './pages/Home.tsx';
 import PhotoGallery from './pages/PhotoGallery.tsx';
 import RectorDetails from './pages/RectorDetails.tsx';
 import RectorsAdmin from './pages/RectorsAdmin.tsx';
+import HallOfFame from './pages/sport/HallOfFame.tsx';
+import StudentSport from './pages/sport/StudentSport.tsx';
+import Sport from './pages/sport/Sport.tsx';
+import Trainers from './pages/sport/Trainers.tsx';
 import VideoGallery from './pages/VideoGallery.tsx';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
@@ -93,11 +97,14 @@ export default function App() {
 				<Route path="/history/memory" element={<Memory />} />
 				<Route path="/history/memory/afgan" element={<MemoryAfgan />} />
 				<Route path="/history/memory/vov" element={<MemoryVov />} />
+				<Route path="/sport" element={<Sport />} />
+				<Route path="/sport/hall-of-fame" element={<HallOfFame />} />
+				<Route path="/sport/trainers" element={<Trainers />} />
+				<Route path="/sport/student-sport" element={<StudentSport />} />
 				<Route path="/gallery" element={<PhotoGallery />} />
 				<Route path="/video-gallery" element={<VideoGallery />} />
 				<Route path="/radmin" element={<RectorsAdmin />} />
-				{/* <Route path="/sport" element={<Sport />} />
-        <Route path="/science" element={<Science />} />
+				{/* <Route path="/science" element={<Science />} />
         <Route path="/student-life" element={<StudentLife />} />
         <Route path="/named-rooms" element={<NamedRooms />} />
         <Route path="/video-gallery" element={<VideoGallery />} /> */}

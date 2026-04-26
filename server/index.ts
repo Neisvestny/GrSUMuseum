@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import { env } from './env';
+import { pool } from './db';
 import { rectorsRouter } from './routes/rectors.router';
 import { teachersRouter } from './routes/teachers.router';
 
@@ -24,6 +25,29 @@ app.get('/', (_req, res) => {
 	res.sendFile(path.join(__dirname, '../dist/client/index.html'));
 });
 
-app.listen(PORT, () => {
-	console.log(`Server running on http://localhost:${PORT}`);
-});
+async function ensureTeachersSectionConstraint(): Promise<void> {
+	await pool.query(`
+		ALTER TABLE teachers
+		DROP CONSTRAINT IF EXISTS teachers_section_check
+	`);
+
+	await pool.query(`
+		ALTER TABLE teachers
+		ADD CONSTRAINT teachers_section_check
+		CHECK (section IN ('vov', 'afgan', 'olympcoch', 'olympstud', 'trainer'))
+	`);
+}
+
+async function bootstrap(): Promise<void> {
+	try {
+		await ensureTeachersSectionConstraint();
+		app.listen(PORT, () => {
+			console.log(`Server running on http://localhost:${PORT}`);
+		});
+	} catch (err) {
+		console.error('Server bootstrap failed:', err);
+		process.exit(1);
+	}
+}
+
+void bootstrap();

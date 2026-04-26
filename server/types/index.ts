@@ -1,8 +1,8 @@
-export type Section = 'vov' | 'afgan';
+export type Section = 'vov' | 'afgan' | 'olympcoch' | 'olympstud' | 'trainer';
 
 // TODO: когда появятся новые секции (например 'sport') — добавь сюда
 export function isValidSection(s: unknown): s is Section {
-	return s === 'vov' || s === 'afgan';
+	return s === 'vov' || s === 'afgan' || s === 'olympcoch' || s === 'olympstud' || s === 'trainer';
 }
 
 export interface TeacherRow {

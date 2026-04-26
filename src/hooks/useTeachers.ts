@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import type { Teacher } from '../api/teachers';
+import type { Teacher, TeacherSection } from '../api/teachers';
 import * as api from '../api/teachers';
 
-export function useTeachers(section: 'vov' | 'afgan') {
+export function useTeachers(section: TeacherSection) {
 	const [teachers, setTeachers] = useState<Teacher[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);

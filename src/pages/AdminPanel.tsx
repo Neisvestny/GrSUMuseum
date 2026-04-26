@@ -17,6 +17,24 @@ const SECTIONS = [
 		sub: 'Афганистан',
 		icon: '🕊️',
 	},
+	{
+		id: 'teachers-olympic-coaches',
+		label: 'Зал славы',
+		sub: 'Тренера Олимпийцы',
+		icon: '🏅',
+	},
+	{
+		id: 'teachers-olympic-students',
+		label: 'Зал славы',
+		sub: 'Студенты Олимпийцы',
+		icon: '🥇',
+	},
+	{
+		id: 'teachers-trainer',
+		label: 'Тренеры',
+		sub: 'Спортивные тренеры',
+		icon: '🏋️',
+	},
 	{ id: 'rectors', label: 'Ректоры ГрГУ', sub: '', icon: '🎓' },
 	// { id: 'news', label: 'Новости', sub: '', icon: '📰' }, ← просто раскомментируй и добавь панель
 ] as const;
@@ -193,11 +211,11 @@ function TeacherCard({
 	onChanged,
 }: {
 	teacher: Teacher;
-	section: 'vov' | 'afgan';
+	section: 'vov' | 'afgan' | 'olympcoch' | 'olympstud' | 'trainer';
 	maxId: number;
 	onChanged: () => void;
 }) {
-	const { update, remove, reload } = useTeachers(section);
+	const { update, remove } = useTeachers(section);
 	const [editing, setEditing] = useState(false);
 	const [confirmDel, setConfirmDel] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -304,7 +322,11 @@ function TeacherCard({
 	);
 }
 
-function TeachersPanel({ section }: { section: 'vov' | 'afgan' }) {
+function TeachersPanel({
+	section,
+}: {
+	section: 'vov' | 'afgan' | 'olympcoch' | 'olympstud' | 'trainer';
+}) {
 	const { teachers, loading, error, add, reset, reload } = useTeachers(section);
 	const [adding, setAdding] = useState(false);
 	const [confirmReset, setConfirmReset] = useState(false);
@@ -847,6 +869,12 @@ function PanelRouter({ sectionId }: { sectionId: SectionId }) {
 			return <TeachersPanel section="vov" />;
 		case 'teachers-afgan':
 			return <TeachersPanel section="afgan" />;
+		case 'teachers-olympic-coaches':
+			return <TeachersPanel section="olympcoch" />;
+		case 'teachers-olympic-students':
+			return <TeachersPanel section="olympstud" />;
+		case 'teachers-trainer':
+			return <TeachersPanel section="trainer" />;
 		case 'rectors':
 			return <RectorsPanel />;
 		// case 'news':        return <NewsPanel />;

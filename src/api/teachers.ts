@@ -7,15 +7,16 @@ export interface Teacher {
 }
 
 const BASE = 'http://localhost:3001/api/teachers';
+export type TeacherSection = 'vov' | 'afgan' | 'olympcoch' | 'olympstud' | 'trainer';
 
-export async function fetchTeachers(section: 'vov' | 'afgan'): Promise<Teacher[]> {
+export async function fetchTeachers(section: TeacherSection): Promise<Teacher[]> {
 	const res = await fetch(`${BASE}/${section}`);
 	if (!res.ok) throw new Error('Failed to fetch teachers');
 	return res.json();
 }
 
 export async function createTeacher(
-	section: 'vov' | 'afgan',
+	section: TeacherSection,
 	data: Partial<Teacher> & { position?: number },
 ): Promise<Teacher> {
 	const res = await fetch(`${BASE}/${section}`, {
@@ -28,7 +29,7 @@ export async function createTeacher(
 }
 
 export async function updateTeacher(
-	section: 'vov' | 'afgan',
+	section: TeacherSection,
 	position: number,
 	data: Partial<Teacher> & { position?: number },
 ): Promise<Teacher> {
@@ -41,14 +42,14 @@ export async function updateTeacher(
 	return res.json();
 }
 
-export async function deleteTeacher(section: 'vov' | 'afgan', position: number): Promise<void> {
+export async function deleteTeacher(section: TeacherSection, position: number): Promise<void> {
 	const res = await fetch(`${BASE}/${section}/${position}`, {
 		method: 'DELETE',
 	});
 	if (!res.ok) throw new Error('Failed to delete teacher');
 }
 
-export async function resetTeachers(section: 'vov' | 'afgan'): Promise<Teacher[]> {
+export async function resetTeachers(section: TeacherSection): Promise<Teacher[]> {
 	const res = await fetch(`${BASE}/${section}/reset`, { method: 'POST' });
 	if (!res.ok) throw new Error('Failed to reset teachers');
 	return res.json();

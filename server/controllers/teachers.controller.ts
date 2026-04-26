@@ -10,7 +10,8 @@ export class TeachersController {
 		const { section } = req.params;
 		if (!isValidSection(section)) {
 			res.status(400).json({
-				error: 'Неверная секция. Используй: vov | afgan',
+				error:
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
 			});
 			return;
 		}
@@ -29,7 +30,8 @@ export class TeachersController {
 		const { section } = req.params;
 		if (!isValidSection(section)) {
 			res.status(400).json({
-				error: 'Неверная секция. Используй: vov | afgan',
+				error:
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
 			});
 			return;
 		}
@@ -50,7 +52,8 @@ export class TeachersController {
 
 		if (!isValidSection(section)) {
 			res.status(400).json({
-				error: 'Неверная секция. Используй: vov | afgan',
+				error:
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
 			});
 			return;
 		}
@@ -79,7 +82,8 @@ export class TeachersController {
 
 		if (!isValidSection(section)) {
 			res.status(400).json({
-				error: 'Неверная секция. Используй: vov | afgan',
+				error:
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
 			});
 			return;
 		}
@@ -106,7 +110,8 @@ export class TeachersController {
 		const { section } = req.params;
 		if (!isValidSection(section)) {
 			res.status(400).json({
-				error: 'Неверная секция. Используй: vov | afgan',
+				error:
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
 			});
 			return;
 		}
