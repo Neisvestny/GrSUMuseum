@@ -1,130 +1,14 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import BaseModal from '../components/design-system/BaseModal';
+import { PHOTOS, type Photo } from '../features/gallery/data/photos';
 import MainLayout from '../layouts/MainLayout';
 
 // ─── Типы ───────────────────────────────
-interface Photo {
-	id: number;
-	src: string;
-	title: string;
-	annotation: string;
-	year: number;
-}
-
 interface YearBlock {
 	year: number;
 	photos: Photo[];
 }
-
-const PHOTOS: Photo[] = [
-	{
-		id: 1,
-		year: 1940,
-		src: '/gallery/1940-1.jpg',
-		title: 'Главный корпус университета',
-		annotation:
-			'Торжественный вид главного здания перед началом учебного года. Студенты собираются на ступенях.',
-	},
-	{
-		id: 2,
-		year: 1940,
-		src: '/gallery/1940-2.jpg',
-		title: 'Лекция по физике',
-		annotation: 'Профессор Николаев ведёт занятие в аудитории №12. Полный зал студентов.',
-	},
-	{
-		id: 3,
-		year: 1940,
-		src: '/gallery/1940-3.jpg',
-		title: 'Студенческий актив',
-		annotation: 'Заседание комсомольского бюро факультета математики и естественных наук.',
-	},
-	{
-		id: 4,
-		year: 1941,
-		src: '/gallery/1941-1.jpg',
-		title: 'Последний мирный день',
-		annotation:
-			'21 июня 1941 года. Выпускной вечер. Никто ещё не знал, что завтра всё изменится.',
-	},
-	{
-		id: 5,
-		year: 1941,
-		src: '/gallery/1941-2.jpg',
-		title: 'Уходят на фронт',
-		annotation:
-			'Студенты и преподаватели добровольцами уходят защищать Родину. Проводы у стен университета.',
-	},
-
-	{
-		id: 4,
-		year: 1941,
-		src: '/gallery/1941-1.jpg',
-		title: 'Последний мирный день',
-		annotation:
-			'21 июня 1941 года. Выпускной вечер. Никто ещё не знал, что завтра всё изменится.',
-	},
-	{
-		id: 5,
-		year: 1941,
-		src: '/gallery/1941-2.jpg',
-		title: 'Уходят на фронт',
-		annotation:
-			'Студенты и преподаватели добровольцами уходят защищать Родину. Проводы у стен университета.',
-	},
-	{
-		id: 6,
-		year: 1944,
-		src: '/gallery/1944-1.jpg',
-		title: 'Возвращение в Гродно',
-		annotation:
-			'Июль 1944. Советские войска освобождают город. Начинается восстановление университета.',
-	},
-	{
-		id: 7,
-		year: 1944,
-		src: '/gallery/1944-2.jpg',
-		title: 'Первые послевоенные занятия',
-		annotation:
-			'Осень 1944. Несмотря на разрушения, учебный процесс возобновлён в уцелевших зданиях.',
-	},
-	{
-		id: 8,
-		year: 1944,
-		src: '/gallery/1944-3.jpg',
-		title: 'Восстановительные работы',
-		annotation: 'Студенты и преподаватели участвуют в восстановлении учебных корпусов.',
-	},
-	{
-		id: 9,
-		year: 1945,
-		src: '/gallery/1945-1.jpg',
-		title: 'День Победы',
-		annotation: '9 мая 1945. Ликование на площади перед университетом. Слёзы радости и горя.',
-	},
-	{
-		id: 10,
-		year: 1945,
-		src: '/gallery/1945-2.jpg',
-		title: 'Возвращение героев',
-		annotation:
-			'Преподаватели-ветераны возвращаются к мирной жизни и продолжают научную деятельность.',
-	},
-	{
-		id: 11,
-		year: 1945,
-		src: '/gallery/1945-3.jpg',
-		title: 'Памятный митинг',
-		annotation: 'Торжественное собрание в честь Победы. Минута молчания по погибшим коллегам.',
-	},
-	{
-		id: 12,
-		year: 1945,
-		src: '/gallery/1945-4.jpg',
-		title: 'Новый учебный год',
-		annotation: 'Сентябрь 1945. Первый послевоенный набор студентов. Жизнь продолжается.',
-	},
-];
 
 function groupByYear(photos: Photo[]): YearBlock[] {
 	const map = new Map<number, Photo[]>();
@@ -142,93 +26,65 @@ function groupByYear(photos: Photo[]): YearBlock[] {
 // ─── Лайтбокс ───────────────────────────
 function Lightbox({ photo, year, onClose }: { photo: Photo; year: number; onClose: () => void }) {
 	return (
-		<motion.div
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
-			transition={{ duration: 0.25 }}
-			className="fixed inset-0 z-50 flex items-center justify-center"
-			onClick={onClose}
+		<BaseModal
+			onClose={onClose}
+			backdropClassName="absolute inset-0 bg-stone-950/90 backdrop-blur-sm"
+			containerClassName="relative z-10 max-w-3xl w-full mx-6 bg-stone-900 border border-stone-700/60 shadow-2xl"
 		>
-			{/* Backdrop */}
-			<div className="absolute inset-0 bg-stone-950/90 backdrop-blur-sm" />
-
-			<motion.div
-				initial={{ scale: 0.92, opacity: 0, y: 20 }}
-				animate={{ scale: 1, opacity: 1, y: 0 }}
-				exit={{ scale: 0.94, opacity: 0, y: 10 }}
-				transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-				className="relative z-10 max-w-3xl w-full mx-6 bg-stone-900 border border-stone-700/60 shadow-2xl"
-				onClick={(e) => e.stopPropagation()}
-				style={{
-					boxShadow: '0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.8)',
-				}}
-			>
-				{/* Фото */}
+			{/* Фото */}
+			<div className="relative bg-stone-950 overflow-hidden" style={{ aspectRatio: '4/3' }}>
+				<img
+					src={photo.src}
+					alt={photo.title}
+					loading="lazy"
+					className="w-full h-full object-cover"
+					style={{ filter: 'sepia(0.3) contrast(1.05)' }}
+					onError={(e) => {
+						(e.target as HTMLImageElement).src =
+							`https://placehold.co/800x600/292524/a8a29e?text=${year}`;
+					}}
+				/>
 				<div
-					className="relative bg-stone-950 overflow-hidden"
-					style={{ aspectRatio: '4/3' }}
+					className="absolute inset-0 pointer-events-none opacity-30"
+					style={{
+						backgroundImage:
+							"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
+						backgroundSize: '128px 128px',
+					}}
+				/>
+				<div
+					className="absolute inset-0 pointer-events-none"
+					style={{
+						background:
+							'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%)',
+					}}
+				/>
+				<div className="absolute top-4 left-4 px-3 py-1 bg-stone-950/70 border border-stone-600/40 text-stone-400 text-xs tracking-[0.2em] font-mono">
+					{year}
+				</div>
+				<button
+					onClick={onClose}
+					className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-stone-950/70 border border-stone-600/40 text-stone-400 hover:text-white hover:bg-stone-800 transition-all text-lg leading-none"
 				>
-					<img
-						src={photo.src}
-						alt={photo.title}
-						loading="lazy"
-						className="w-full h-full object-cover"
-						style={{ filter: 'sepia(0.3) contrast(1.05)' }}
-						onError={(e) => {
-							(e.target as HTMLImageElement).src =
-								`https://placehold.co/800x600/292524/a8a29e?text=${year}`;
-						}}
-					/>
-					{/* Зернистость */}
-					<div
-						className="absolute inset-0 pointer-events-none opacity-30"
-						style={{
-							backgroundImage:
-								"url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E\")",
-							backgroundSize: '128px 128px',
-						}}
-					/>
-					{/* Виньетка */}
-					<div
-						className="absolute inset-0 pointer-events-none"
-						style={{
-							background:
-								'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.55) 100%)',
-						}}
-					/>
-					{/* Год */}
-					<div className="absolute top-4 left-4 px-3 py-1 bg-stone-950/70 border border-stone-600/40 text-stone-400 text-xs tracking-[0.2em] font-mono">
-						{year}
-					</div>
-					{/* Закрыть */}
-					<button
-						onClick={onClose}
-						className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-stone-950/70 border border-stone-600/40 text-stone-400 hover:text-white hover:bg-stone-800 transition-all text-lg leading-none"
-					>
-						×
-					</button>
-				</div>
+					×
+				</button>
+			</div>
 
-				{/* Подпись */}
-				<div className="p-6 border-t border-stone-700/40">
-					<div className="flex items-start gap-3">
-						<div className="w-px self-stretch bg-amber-700/60 shrink-0 mt-1" />
-						<div>
-							<h3
-								className="text-stone-100 font-semibold text-lg mb-2 leading-snug"
-								style={{ fontFamily: 'Georgia, serif' }}
-							>
-								{photo.title}
-							</h3>
-							<p className="text-stone-400 text-sm leading-relaxed">
-								{photo.annotation}
-							</p>
-						</div>
+			<div className="p-6 border-t border-stone-700/40">
+				<div className="flex items-start gap-3">
+					<div className="w-px self-stretch bg-amber-700/60 shrink-0 mt-1" />
+					<div>
+						<h3
+							className="text-stone-100 font-semibold text-lg mb-2 leading-snug"
+							style={{ fontFamily: 'Georgia, serif' }}
+						>
+							{photo.title}
+						</h3>
+						<p className="text-stone-400 text-sm leading-relaxed">{photo.annotation}</p>
 					</div>
 				</div>
-			</motion.div>
-		</motion.div>
+			</div>
+		</BaseModal>
 	);
 }
 

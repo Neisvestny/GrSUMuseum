@@ -2,7 +2,7 @@
 // FIXME: поле files хранится как JSONB, но pg драйвер возвращает его уже
 // как объект — не нужно делать JSON.parse на клиенте. Не ломай это.
 
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { RectorRow } from '../types';
 
 type FileItem = { name: string; url: string };

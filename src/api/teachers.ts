@@ -1,3 +1,5 @@
+import { apiRequest } from '../shared/api/client';
+
 export interface Teacher {
 	id: number;
 	name: string;
@@ -6,51 +8,40 @@ export interface Teacher {
 	img: string;
 }
 
-const BASE = 'http://localhost:3001/api/teachers';
 export type TeacherSection = 'vov' | 'afgan' | 'olympcoch' | 'olympstud' | 'trainer';
+export type TeacherMutation = Partial<Omit<Teacher, 'id'>> & { position?: number };
 
 export async function fetchTeachers(section: TeacherSection): Promise<Teacher[]> {
-	const res = await fetch(`${BASE}/${section}`);
-	if (!res.ok) throw new Error('Failed to fetch teachers');
-	return res.json();
+	return apiRequest<Teacher[]>(`/teachers/${section}`);
 }
 
 export async function createTeacher(
 	section: TeacherSection,
-	data: Partial<Teacher> & { position?: number },
+	data: TeacherMutation,
 ): Promise<Teacher> {
-	const res = await fetch(`${BASE}/${section}`, {
+	return apiRequest<Teacher>(`/teachers/${section}`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data),
 	});
-	if (!res.ok) throw new Error('Failed to create teacher');
-	return res.json();
 }
 
 export async function updateTeacher(
 	section: TeacherSection,
 	position: number,
-	data: Partial<Teacher> & { position?: number },
+	data: TeacherMutation,
 ): Promise<Teacher> {
-	const res = await fetch(`${BASE}/${section}/${position}`, {
+	return apiRequest<Teacher>(`/teachers/${section}/${position}`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(data),
 	});
-	if (!res.ok) throw new Error('Failed to update teacher');
-	return res.json();
 }
 
 export async function deleteTeacher(section: TeacherSection, position: number): Promise<void> {
-	const res = await fetch(`${BASE}/${section}/${position}`, {
+	await apiRequest<void>(`/teachers/${section}/${position}`, {
 		method: 'DELETE',
 	});
-	if (!res.ok) throw new Error('Failed to delete teacher');
 }
 
 export async function resetTeachers(section: TeacherSection): Promise<Teacher[]> {
-	const res = await fetch(`${BASE}/${section}/reset`, { method: 'POST' });
-	if (!res.ok) throw new Error('Failed to reset teachers');
-	return res.json();
+	return apiRequest<Teacher[]>(`/teachers/${section}/reset`, { method: 'POST' });
 }

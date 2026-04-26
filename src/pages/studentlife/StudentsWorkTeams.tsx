@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import TabsBar from '../../components/design-system/TabsBar';
+import TextImagePanel from '../../components/patterns/TextImagePanel';
 import MainLayout from '../../layouts/MainLayout';
 
 const TABS = [
@@ -48,25 +50,7 @@ export default function StudentsWorkTeams() {
 
 	return (
 		<MainLayout title="Студенческие отряды">
-			<div className="relative z-10 flex items-center gap-3 mb-6">
-				{TABS.map((tab) => (
-					<button
-						key={tab.id}
-						onClick={() => setActiveTab(tab.id)}
-						className={`
-							flex-1 py-3 px-4 rounded-xl border-2 font-semibold text-sm text-center
-							transition-all duration-200 active:scale-95
-							${
-								activeTab === tab.id
-									? 'bg-blue-700 border-blue-700 text-white shadow-lg'
-									: 'bg-white/80 border-blue-200 text-blue-700 hover:border-blue-400 hover:bg-white'
-							}
-						`}
-					>
-						{tab.label}
-					</button>
-				))}
-			</div>
+			<TabsBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
 
 			<AnimatePresence mode="wait">
 				<motion.div
@@ -75,22 +59,14 @@ export default function StudentsWorkTeams() {
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -16 }}
 					transition={{ duration: 0.25, ease: 'easeOut' }}
-					className="h-full flex gap-8 bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm"
+					className="h-full"
 				>
-					{/* ТЕКСТ */}
-					<div className="flex-1 flex flex-col justify-center">
-						<h2 className="text-blue-700 font-bold text-2xl mb-4">{current.label}</h2>
-						<p className="text-gray-600 text-lg leading-relaxed">{current.text}</p>
-					</div>
-
-					{/* ФОТО */}
-					<div className="w-96 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100">
-						<img
-							src={current.img}
-							alt={current.label}
-							className="w-full h-full object-cover"
-						/>
-					</div>
+					<TextImagePanel
+						title={current.label}
+						text={current.text}
+						imageSrc={current.img}
+						imageAlt={current.label}
+					/>
 				</motion.div>
 			</AnimatePresence>
 		</MainLayout>

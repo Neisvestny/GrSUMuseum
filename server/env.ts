@@ -7,7 +7,12 @@ export const env = {
 
 	HOST: get('HOST').default('localhost').asString(),
 	PORT: get('PORT').default('3000').asPortNumber(),
-	CORS_ORIGIN: get('CORS_ORIGIN').default('http://localhost:5173').asString().split(','),
+	CORS_ORIGIN: get('CORS_ORIGIN')
+		.default('http://localhost:5173')
+		.asString()
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean),
 
 	// DB
 	DB_HOST: get('DB_HOST').required().asString(),

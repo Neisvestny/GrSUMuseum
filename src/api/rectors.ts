@@ -1,3 +1,5 @@
+import { apiRequest } from '../shared/api/client';
+
 export interface Rector {
 	id: number;
 	position: number;
@@ -10,43 +12,30 @@ export interface Rector {
 	files: { name: string; url: string }[];
 }
 
-const BASE = 'http://localhost:3001/api/rectors';
-
 export async function fetchRectors(): Promise<Rector[]> {
-	const res = await fetch(BASE);
-	if (!res.ok) throw new Error('Failed to fetch rectors');
-	return res.json();
+	return apiRequest<Rector[]>('/rectors');
 }
 
 export async function fetchRector(id: number): Promise<Rector> {
-	const res = await fetch(`${BASE}/${id}`);
-	if (!res.ok) throw new Error('Failed to fetch rector');
-	return res.json();
+	return apiRequest<Rector>(`/rectors/${id}`);
 }
 
 export async function createRector(data: Partial<Rector>): Promise<Rector> {
-	const res = await fetch(BASE, {
+	return apiRequest<Rector>('/rectors', {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(sanitize(data)),
 	});
-	if (!res.ok) throw new Error('Failed to create rector');
-	return res.json();
 }
 
 export async function updateRector(id: number, data: Partial<Rector>): Promise<Rector> {
-	const res = await fetch(`${BASE}/${id}`, {
+	return apiRequest<Rector>(`/rectors/${id}`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(sanitize(data)),
 	});
-	if (!res.ok) throw new Error('Failed to update rector');
-	return res.json();
 }
 
 export async function deleteRector(id: number): Promise<void> {
-	const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
-	if (!res.ok) throw new Error('Failed to delete rector');
+	await apiRequest<void>(`/rectors/${id}`, { method: 'DELETE' });
 }
 
 // Убираем пустые строки из массивов перед отправкой на сервер

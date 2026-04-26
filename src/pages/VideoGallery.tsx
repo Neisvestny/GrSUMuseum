@@ -1,70 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { VIDEOS, type VideoItem } from '../features/gallery/data/videos';
 import MainLayout from '../layouts/MainLayout';
 
 // ─── Типы ───────────────────────────────
-interface Video {
-	id: number;
-	src: string;
-	title: string;
-	description: string;
-	tags: string[];
-	duration?: string;
-	isExternal?: boolean;
-}
-
-const VIDEOS: Video[] = [
-	{
-		id: 1,
-		src: '/videos/opening-ceremony.mp4',
-		title: 'Торжественное открытие',
-		description: 'Церемония открытия нового учебного корпуса факультета математики.',
-		tags: ['Мероприятия', 'Факультет'],
-		duration: '8:45',
-	},
-	{
-		id: 2,
-		src: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-		title: 'День открытых дверей 2024',
-		description: 'Обзор факультетов и возможностей для абитуриентов.',
-		tags: ['Абитуриентам', 'Мероприятия'],
-		duration: '15:20',
-		isExternal: true,
-	},
-	{
-		id: 3,
-		src: '/videos/science-conference.mp4',
-		title: 'Научная конференция',
-		description: 'Ежегодная студенческая научно-практическая конференция.',
-		tags: ['Наука', 'Студенты'],
-		duration: '42:10',
-	},
-	{
-		id: 4,
-		src: 'https://www.youtube.com/watch?v=abcdef12345',
-		title: 'Студенческий спорт',
-		description: 'Межвузовские соревнования по волейболу.',
-		tags: ['Спорт', 'Студенты'],
-		duration: '5:30',
-		isExternal: true,
-	},
-	{
-		id: 5,
-		src: '/videos/lab-tour.mp4',
-		title: 'Экскурсия по лабораториям',
-		description: 'Обзор современных научных лабораторий университета.',
-		tags: ['Наука', 'Факультет'],
-		duration: '11:00',
-	},
-	{
-		id: 6,
-		src: '/videos/graduation.mp4',
-		title: 'Выпускной 2024',
-		description: 'Торжественное вручение дипломов выпускникам.',
-		tags: ['Мероприятия', 'Студенты'],
-		duration: '28:00',
-	},
-];
 
 // ─── Утилиты ────────────────────────────
 function getYoutubeId(url: string): string | null {
@@ -87,14 +26,14 @@ function getThumbnail(src: string): string | null {
 	return ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null;
 }
 
-function getAllTags(videos: Video[]): string[] {
+function getAllTags(videos: VideoItem[]): string[] {
 	const set = new Set<string>();
 	for (const v of videos) v.tags.forEach((t) => set.add(t));
 	return ['Все', ...Array.from(set).sort()];
 }
 
 // ─── Модальное окно ──────────────────────
-function VideoModal({ video, onClose }: { video: Video; onClose: () => void }) {
+function VideoModal({ video, onClose }: { video: VideoItem; onClose: () => void }) {
 	const embedUrl = getEmbedUrl(video.src);
 
 	useEffect(() => {
@@ -211,7 +150,7 @@ function VideoCard({
 	index,
 	onClick,
 }: {
-	video: Video;
+	video: VideoItem;
 	index: number;
 	onClick: () => void;
 }) {
@@ -449,7 +388,7 @@ function FilterBar({
 export default function VideoGallery() {
 	const allTags = getAllTags(VIDEOS);
 	const [activeTag, setActiveTag] = useState('Все');
-	const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+	const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
 
 	const filtered =
 		activeTag === 'Все' ? VIDEOS : VIDEOS.filter((v) => v.tags.includes(activeTag));

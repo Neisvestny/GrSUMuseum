@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import type { Pool } from 'pg';
 import type { Section, TeacherRow } from '../types';
 
 export class TeachersService {

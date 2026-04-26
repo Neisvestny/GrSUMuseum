@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 
-export default function ScreenSaver({ onDismiss }) {
+type Props = {
+	onDismiss: () => void;
+};
+
+export default function ScreenSaver({ onDismiss }: Props) {
 	const navigate = useNavigate();
 
 	const handleClick = () => {

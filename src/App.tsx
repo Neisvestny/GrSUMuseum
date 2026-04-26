@@ -1,27 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
+import { appRoutes } from './app/routes';
 import ScreenSaver from './components/ScreenSaver.tsx';
 import './index.css';
-import AdminPanel from './pages/AdminPanel.tsx';
-import History from './pages/history/History.tsx';
-import Memory from './pages/history/Memory.tsx';
-import MemoryAfgan from './pages/history/MemoryAfgan.tsx';
-import MemoryVov from './pages/history/MemoryVov.tsx';
-import Rectors from './pages/history/Rectors.tsx';
-import TeachersInstitute from './pages/history/TeachersInstitute.tsx';
-import Home from './pages/Home.tsx';
-import PhotoGallery from './pages/PhotoGallery.tsx';
-import RectorDetails from './pages/RectorDetails.tsx';
-import RectorsAdmin from './pages/RectorsAdmin.tsx';
-import HallOfFame from './pages/sport/HallOfFame.tsx';
-import Sport from './pages/sport/Sport.tsx';
-import StudentSport from './pages/sport/StudentSport.tsx';
-import Trainers from './pages/sport/Trainers.tsx';
-import SocialLife from './pages/studentlife/SocialLife.tsx';
-import StudentInitiatives from './pages/studentlife/StudentInitiatives.tsx';
-import StudentLife from './pages/studentlife/StudentLife.tsx';
-import StudentsWorkTeams from './pages/studentlife/StudentsWorkTeams.tsx';
-import VideoGallery from './pages/VideoGallery.tsx';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
 
@@ -91,31 +72,9 @@ export default function App() {
 		<>
 			{isIdle && <ScreenSaver onDismiss={resetTimer} />}
 			<Routes>
-				<Route path="/admin" element={<AdminPanel />} />
-
-				<Route path="/" element={<Home />} />
-				<Route path="/history" element={<History />} />
-				<Route path="/history/development" element={<TeachersInstitute />} />
-				<Route path="/history/rectors" element={<Rectors />} />
-				<Route path="/history/rectors/:id" element={<RectorDetails />} />
-				<Route path="/history/memory" element={<Memory />} />
-				<Route path="/history/memory/afgan" element={<MemoryAfgan />} />
-				<Route path="/history/memory/vov" element={<MemoryVov />} />
-				<Route path="/sport" element={<Sport />} />
-				<Route path="/sport/hall-of-fame" element={<HallOfFame />} />
-				<Route path="/sport/trainers" element={<Trainers />} />
-				<Route path="/sport/student-sport" element={<StudentSport />} />
-				<Route path="/gallery" element={<PhotoGallery />} />
-				<Route path="/video-gallery" element={<VideoGallery />} />
-				<Route path="/radmin" element={<RectorsAdmin />} />
-				<Route path="/studentlife" element={<StudentLife />} />
-				<Route path="/studentlife/students-work-teams" element={<StudentsWorkTeams />} />
-				<Route path="/studentlife/social-life" element={<SocialLife />} />
-				<Route path="/studentlife/student-initiatives" element={<StudentInitiatives />} />
-				{/* <Route path="/science" element={<Science />} />
-        <Route path="/student-life" element={<StudentLife />} />
-        <Route path="/named-rooms" element={<NamedRooms />} />
-        <Route path="/video-gallery" element={<VideoGallery />} /> */}
+				{appRoutes.map((route) => (
+					<Route key={route.path} path={route.path} element={route.element} />
+				))}
 			</Routes>
 		</>
 	);

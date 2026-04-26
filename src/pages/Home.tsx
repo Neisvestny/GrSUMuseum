@@ -14,10 +14,8 @@ const BLOBS = [
 const BUTTONS = [
 	{ label: 'История ГрГУ', path: '/history' },
 	{ label: 'Спорт', path: '/sport' },
-	{ label: 'Наука', path: '/science' },
 	{ label: 'Студенческая жизнь', path: '/studentlife' },
 	{ label: 'Фотогалерея', path: '/gallery' },
-	{ label: 'Именные аудитории', path: '/named-rooms' },
 	{ label: 'Видеогалерея', path: '/video-gallery' },
 ];
 

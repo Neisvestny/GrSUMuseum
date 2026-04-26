@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { TeachersController } from '../controllers/teachers.controller';
-import { pool } from '../db';
+import { pool } from '../db/pool';
 import { TeachersService } from '../services/teachers.service';
 
 const service = new TeachersService(pool);

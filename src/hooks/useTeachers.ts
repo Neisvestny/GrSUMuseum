@@ -1,36 +1,37 @@
-import { useEffect, useState } from 'react';
-import type { Teacher, TeacherSection } from '../api/teachers';
+import { useCallback, useEffect, useState } from 'react';
+import type { Teacher, TeacherMutation, TeacherSection } from '../api/teachers';
 import * as api from '../api/teachers';
+import { ApiError } from '../shared/api/client';
 
 export function useTeachers(section: TeacherSection) {
 	const [teachers, setTeachers] = useState<Teacher[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const load = async () => {
+	const load = useCallback(async () => {
 		try {
 			setLoading(true);
 			setError(null);
 			const data = await api.fetchTeachers(section);
 			setTeachers(data);
-		} catch {
-			setError('Не удалось загрузить данные');
+		} catch (error) {
+			setError(error instanceof ApiError ? error.message : 'Не удалось загрузить данные');
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [section]);
 
 	useEffect(() => {
 		load();
-	}, [section]);
+	}, [load]);
 
-	const add = async (data: Partial<Teacher> & { position?: number }) => {
+	const add = async (data: TeacherMutation) => {
 		const teacher = await api.createTeacher(section, data);
 		await load(); // перезагружаем чтобы позиции были актуальны
 		return teacher;
 	};
 
-	const update = async (position: number, data: Partial<Teacher> & { position?: number }) => {
+	const update = async (position: number, data: TeacherMutation) => {
 		await api.updateTeacher(section, position, data);
 		await load();
 	};

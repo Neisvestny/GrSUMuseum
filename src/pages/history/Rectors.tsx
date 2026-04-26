@@ -4,54 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useRectors } from '../../hooks/useRectors';
 import MainLayout from '../../layouts/MainLayout';
 
-// const RECTORS = [
-// 	{
-// 		id: 1,
-// 		name: 'Иванов Иван Иванович',
-// 		years: '1940 — 1950',
-// 		description:
-// 			'Первый ректор института. Заложил основы учебной и научной деятельности.',
-// 		img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQn2nmWoa-66Yo5xylQwIiAxtvMrK2pB2l4CA&s',
-// 	},
-// 	{
-// 		id: 2,
-// 		name: 'Петров Пётр Петрович',
-// 		years: '1950 — 1962',
-// 		description: 'Расширил факультетскую базу, открыл новые специальности.',
-// 		img: '/images/rector2.jpg',
-// 	},
-// 	{
-// 		id: 3,
-// 		name: 'Сидоров Семён Семёнович',
-// 		years: '1962 — 1975',
-// 		description: 'Провёл масштабную реорганизацию учебного процесса.',
-// 		img: '/images/rector3.jpg',
-// 	},
-// 	{
-// 		id: 4,
-// 		name: 'Козлов Андрей Николаевич',
-// 		years: '1975 — 1988',
-// 		description: 'Руководил преобразованием института в университет.',
-// 		img: '/images/rector4.jpg',
-// 	},
-// 	{
-// 		id: 5,
-// 		name: 'Михайлов Виктор Степанович',
-// 		years: '1988 — 2002',
-// 		description:
-// 			'Развивал международные связи и научные школы университета.',
-// 		img: '/images/rector5.jpg',
-// 	},
-// 	{
-// 		id: 6,
-// 		name: 'Романов Олег Александрович',
-// 		years: '2002 — настоящее время',
-// 		description:
-// 			'Под его руководством университет вышел на новый уровень развития.',
-// 		img: '/images/rector6.jpg',
-// 	},
-// ];
-
 export default function Rectors() {
 	const { rectors, loading } = useRectors();
 	const navigate = useNavigate();

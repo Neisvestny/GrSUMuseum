@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
 	createRector,
 	deleteRector,
@@ -6,37 +6,38 @@ import {
 	updateRector,
 	type Rector,
 } from '../api/rectors';
+import { ApiError } from '../shared/api/client';
 
 export function useRectors() {
 	const [rectors, setRectors] = useState<Rector[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const load = async () => {
+	const load = useCallback(async () => {
 		try {
 			setLoading(true);
 			setError(null);
 			const data = await fetchRectors();
 			setRectors(data);
-		} catch (e) {
-			console.error('Ошибка загрузки ректоров', e);
-			setError('Не удалось загрузить данные');
+		} catch (error) {
+			console.error('Ошибка загрузки ректоров', error);
+			setError(error instanceof ApiError ? error.message : 'Не удалось загрузить данные');
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		load();
-	}, []);
+	}, [load]);
 
 	const add = async (data: Partial<Rector>) => {
 		try {
 			await createRector(data);
 			await load();
-		} catch (e) {
-			console.error(e);
-			throw new Error('Ошибка при добавлении');
+		} catch (error) {
+			console.error(error);
+			throw new Error(error instanceof ApiError ? error.message : 'Ошибка при добавлении');
 		}
 	};
 
@@ -44,9 +45,9 @@ export function useRectors() {
 		try {
 			await updateRector(id, data);
 			await load();
-		} catch (e) {
-			console.error(e);
-			throw new Error('Ошибка при обновлении');
+		} catch (error) {
+			console.error(error);
+			throw new Error(error instanceof ApiError ? error.message : 'Ошибка при обновлении');
 		}
 	};
 
@@ -55,9 +56,9 @@ export function useRectors() {
 		try {
 			await deleteRector(id);
 			await load();
-		} catch (e) {
-			console.error(e);
-			throw new Error('Ошибка при удалении');
+		} catch (error) {
+			console.error(error);
+			throw new Error(error instanceof ApiError ? error.message : 'Ошибка при удалении');
 		}
 	};
 

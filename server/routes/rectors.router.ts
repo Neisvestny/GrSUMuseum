@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { RectorsController } from '../controllers/rectors.controller';
-import { pool } from '../db';
+import { pool } from '../db/pool';
 import { RectorsService } from '../services/rectors.service';
 
 const service = new RectorsService(pool);
