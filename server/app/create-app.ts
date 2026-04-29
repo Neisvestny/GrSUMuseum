@@ -3,6 +3,7 @@ import express from 'express';
 import { env } from '../env';
 import { rectorsRouter } from '../modules/rectors';
 import { teachersRouter } from '../modules/teachers';
+import { imagesRouter } from '../routes/images.router';
 import { errorHandler } from './middleware/error-handler';
 
 export function createApp() {
@@ -13,6 +14,7 @@ export function createApp() {
 
 	app.use('/api/teachers', teachersRouter);
 	app.use('/api/rectors', rectorsRouter);
+	app.use('/api/images', imagesRouter);
 
 	app.use(errorHandler);
 

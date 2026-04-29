@@ -1,40 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchRector, type Rector } from '../api/rectors';
+import { useRector } from '../hooks/useRector';
 import MainLayout from '../layouts/MainLayout';
 
 export default function RectorDetails() {
 	const { id } = useParams<{ id: string }>();
-	const [rector, setRector] = useState<Rector | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	useEffect(() => {
-		if (!id) return;
-
-		let cancelled = false;
-
-		fetchRector(Number(id))
-			.then((data) => {
-				if (!cancelled) {
-					setRector(data);
-					setError(null);
-				}
-			})
-			.catch(() => {
-				if (!cancelled) {
-					setRector(null);
-					setError('Не удалось загрузить данные ректора');
-				}
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
-
-		return () => {
-			cancelled = true;
-		};
-	}, [id]);
+	const rectorId = useMemo(() => (id ? Number(id) : null), [id]);
+	const { rector, loading, error } = useRector(rectorId);
 
 	if (loading) {
 		return (

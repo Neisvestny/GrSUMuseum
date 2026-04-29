@@ -1,15 +1,8 @@
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { AnimatedBlobsBackground } from '../components/ui/AnimatedBlobsBackground';
+import { BLOB_PRESETS } from '../components/ui/animatedBlobsPresets';
 
-const BLOBS = [
-	{ w: 300, h: 250, left: '5%', top: '10%', x: 80, y: 60, duration: 14 },
-	{ w: 200, h: 200, left: '70%', top: '5%', x: -60, y: 80, duration: 18 },
-	{ w: 350, h: 300, left: '60%', top: '60%', x: -80, y: -60, duration: 12 },
-	{ w: 250, h: 200, left: '15%', top: '65%', x: 60, y: -80, duration: 16 },
-	{ w: 180, h: 180, left: '40%', top: '30%', x: -50, y: 70, duration: 20 },
-	{ w: 220, h: 280, left: '85%', top: '35%', x: -70, y: -50, duration: 15 },
-	{ w: 160, h: 160, left: '30%', top: '80%', x: 90, y: -40, duration: 11 },
-];
+const BLOBS = BLOB_PRESETS.home;
 
 const BUTTONS = [
 	{ label: 'История ГрГУ', path: '/history' },
@@ -17,6 +10,9 @@ const BUTTONS = [
 	{ label: 'Студенческая жизнь', path: '/studentlife' },
 	{ label: 'Фотогалерея', path: '/gallery' },
 	{ label: 'Видеогалерея', path: '/video-gallery' },
+	{ label: 'Наука', path: '#1' }, // TODO: add science page
+	{ label: 'Именные аудитории', path: '#2' }, // TODO: add named rooms page
+	{ label: 'Дипломогалерея', path: '#3' }, // TODO: add diplomas gallery page
 ];
 
 export default function Home() {
@@ -25,30 +21,7 @@ export default function Home() {
 	return (
 		<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
 			{/* ФОН */}
-			<div className="absolute inset-0 z-1">
-				{BLOBS.map((blob, i) => (
-					<motion.div
-						key={i}
-						className="absolute rounded-full bg-blue-300/40"
-						style={{
-							width: blob.w,
-							height: blob.h,
-							left: blob.left,
-							top: blob.top,
-							filter: 'blur(60px)',
-						}}
-						animate={{
-							x: [0, blob.x, 0],
-							y: [0, blob.y, 0],
-						}}
-						transition={{
-							duration: blob.duration,
-							repeat: Infinity,
-							ease: 'easeInOut',
-						}}
-					/>
-				))}
-			</div>
+			<AnimatedBlobsBackground blobs={BLOBS} className="absolute inset-0 z-1" />
 
 			<main className="flex-1 flex flex-col items-center justify-center gap-8">
 				<header className="text-center">

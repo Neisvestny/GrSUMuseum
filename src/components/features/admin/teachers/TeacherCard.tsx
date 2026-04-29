@@ -1,39 +1,41 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import type { Rector } from '../../../../api/rectors';
+import type { Teacher, TeacherMutation, TeacherSection } from '../../../../api/teachers';
+import { useTeachers } from '../../../../hooks/useTeachers';
 import AdminButton from '../ui/AdminButton';
 import { ConfirmDelete } from '../ui/ConfirmDelete';
 import { ErrorBox } from '../ui/ErrorBox';
-import RectorForm from './RectorForm';
+import TeacherForm from './TeacherForm';
 
 type Props = {
-	rector: Rector;
-	onChanged?: () => void;
-	onUpdate: (id: number, data: Partial<Rector>) => Promise<void>;
-	onDelete: (id: number) => Promise<void>;
+	teacher: Teacher;
+	section: TeacherSection;
+	maxId: number;
+	onChanged: () => void;
 };
 
-export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Props) {
+export default function TeacherCard({ teacher, section, maxId, onChanged }: Props) {
+	const { update, remove } = useTeachers(section);
 	const [editing, setEditing] = useState(false);
-	const [confirmDelete, setConfirmDelete] = useState(false);
+	const [confirmDel, setConfirmDel] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
 
-	// Если после удаления/пересортировки React переиспользовал компонент карточки
-	// для другого ректора (изменился rector.id), сбрасываем локальный UI-state.
+	// В teachers id может быть "позиция" и меняться после удаления.
+	// Если React переиспользовал карточку для другой записи — сбросим локальный UI-state.
 	useEffect(() => {
 		setEditing(false);
-		setConfirmDelete(false);
+		setConfirmDel(false);
 		setBusy(false);
 		setErr(null);
-	}, [rector.id]);
+	}, [teacher.id, section]);
 
-	const handleSave = async (data: Partial<Rector>) => {
+	const handleSave = async (data: TeacherMutation) => {
 		setBusy(true);
 		try {
-			await onUpdate(rector.id, data);
+			await update(teacher.id, data);
 			setEditing(false);
-			onChanged?.();
+			onChanged();
 		} catch (error) {
 			setErr(error instanceof Error ? error.message : 'Ошибка');
 		} finally {
@@ -44,8 +46,8 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 	const handleDelete = async () => {
 		setBusy(true);
 		try {
-			await onDelete(rector.id);
-			onChanged?.();
+			await remove(teacher.id);
+			onChanged();
 		} catch (error) {
 			setErr(error instanceof Error ? error.message : 'Ошибка удаления');
 		} finally {
@@ -62,35 +64,21 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 			className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden"
 		>
 			<div className="flex items-center gap-4 p-4">
-				<div className="w-12 h-12 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
-					{rector.img ? (
-						<img
-							src={rector.img}
-							alt={rector.name}
-							className="w-full h-full object-cover"
-							onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')}
-						/>
-					) : (
-						<div className="w-full h-full flex items-center justify-center text-blue-300 text-xl">
-							👤
-						</div>
-					)}
-				</div>
-				<div className="w-8 h-8 shrink-0 rounded-lg bg-blue-700 text-white flex items-center justify-center font-bold text-xs">
-					{rector.position}
+				<div className="w-10 h-10 shrink-0 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm">
+					{teacher.id}
 				</div>
 				<div className="flex-1 min-w-0">
 					<div className="font-bold text-blue-800 text-sm truncate">
-						{rector.name || '—'}
+						{teacher.name || '—'}
 					</div>
-					<div className="text-xs text-gray-500 truncate">{rector.years || '—'}</div>
+					<div className="text-xs text-gray-500 truncate">{teacher.role || '—'}</div>
 				</div>
 				<div className="flex gap-2 shrink-0">
 					<AdminButton
 						disabled={busy}
 						onClick={() => {
 							setEditing((v) => !v);
-							setConfirmDelete(false);
+							setConfirmDel(false);
 							setErr(null);
 						}}
 						variant="secondary"
@@ -99,10 +87,10 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 					>
 						{editing ? 'Свернуть' : 'Изменить'}
 					</AdminButton>
-					{!confirmDelete ? (
+					{!confirmDel ? (
 						<AdminButton
 							disabled={busy}
-							onClick={() => setConfirmDelete(true)}
+							onClick={() => setConfirmDel(true)}
 							variant="danger"
 							size="sm"
 							className="bg-transparent !text-red-600 !border-red-200 hover:!bg-red-50 hover:!border-red-200 text-xs shadow-none hover:shadow-none"
@@ -112,7 +100,7 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 					) : (
 						<ConfirmDelete
 							onYes={handleDelete}
-							onNo={() => setConfirmDelete(false)}
+							onNo={() => setConfirmDel(false)}
 							busy={busy}
 						/>
 					)}
@@ -133,8 +121,9 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 						className="overflow-hidden"
 					>
 						<div className="px-4 pb-4 pt-4 border-t-2 border-blue-50">
-							<RectorForm
-								initial={rector}
+							<TeacherForm
+								initial={teacher}
+								maxPos={maxId}
 								onSave={handleSave}
 								onCancel={() => setEditing(false)}
 								busy={busy}

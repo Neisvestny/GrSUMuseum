@@ -2,8 +2,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import type { Request, Response } from 'express';
-import { pool } from '../db/pool';
 import { ensureTeachersSectionConstraint } from '../db/ensure-schema';
+import { pool } from '../db/pool';
 import { env } from '../env';
 import { createApp } from './create-app';
 

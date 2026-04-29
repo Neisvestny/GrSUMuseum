@@ -2,12 +2,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Rector } from '../api/rectors';
-import type { Teacher, TeacherMutation, TeacherSection } from '../api/teachers';
 import { EMPTY_RECTOR } from '../components/features/admin/rectors/constants';
 import RectorCard from '../components/features/admin/rectors/RectorCard';
 import RectorForm from '../components/features/admin/rectors/RectorForm';
+import TeachersPanel from '../components/features/admin/teachers/TeachersPanel';
+import AdminButton from '../components/features/admin/ui/AdminButton';
+import { ErrorBox } from '../components/features/admin/ui/ErrorBox';
 import { useRectors } from '../hooks/useRectors';
-import { useTeachers } from '../hooks/useTeachers';
 
 // ═══════════════════════════════════════════════════════════════
 // РЕЕСТР СЕКЦИЙ — добавляй сюда новые разделы
@@ -44,418 +45,6 @@ const SECTIONS = [
 
 type SectionId = (typeof SECTIONS)[number]['id'];
 
-// ═══════════════════════════════════════════════════════════════
-// ОБЩИЕ UI-ПРИМИТИВЫ
-// ═══════════════════════════════════════════════════════════════
-const inp =
-	'w-full px-3 py-2 rounded-xl border-2 border-blue-200 bg-white text-gray-800 text-sm focus:outline-none focus:border-blue-500 transition-colors';
-const lbl = 'text-xs font-semibold text-blue-700 mb-1 block';
-
-function ErrorBox({ msg }: { msg: string }) {
-	return (
-		<div className="px-3 py-2 rounded-xl bg-red-50 border-2 border-red-200 text-red-600 text-sm">
-			{msg}
-		</div>
-	);
-}
-
-function ConfirmDelete({
-	onYes,
-	onNo,
-	busy,
-}: {
-	onYes: () => void;
-	onNo: () => void;
-	busy: boolean;
-}) {
-	return (
-		<div className="flex gap-1 items-center">
-			<span className="text-red-500 text-xs font-semibold">Удалить?</span>
-			<button
-				onClick={onYes}
-				disabled={busy}
-				className="px-3 py-1.5 rounded-xl bg-red-500 text-white text-xs font-semibold hover:bg-red-600 active:scale-95 transition-all disabled:opacity-40"
-			>
-				{busy ? '...' : 'Да'}
-			</button>
-			<button
-				onClick={onNo}
-				className="px-3 py-1.5 rounded-xl border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:bg-gray-50 active:scale-95 transition-all"
-			>
-				Нет
-			</button>
-		</div>
-	);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// ПАНЕЛЬ: ПРЕПОДАВАТЕЛИ (ВОВ / Афганистан)
-// ═══════════════════════════════════════════════════════════════
-function TeacherForm({
-	initial,
-	maxPos,
-	onSave,
-	onCancel,
-	busy,
-}: {
-	initial: Partial<Teacher> & { id?: number; position?: number };
-	maxPos: number;
-	onSave: (data: TeacherMutation) => Promise<void>;
-	onCancel: () => void;
-	busy: boolean;
-}) {
-	const [form, setForm] = useState({
-		position: String(initial.position ?? initial.id ?? ''),
-		name: initial.name ?? '',
-		role: initial.role ?? '',
-		desc: initial.desc ?? '',
-		img: initial.img ?? '',
-	});
-	const [saving, setSaving] = useState(false);
-	const [err, setErr] = useState<string | null>(null);
-
-	const set =
-		(k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-			setForm((f) => ({ ...f, [k]: e.target.value }));
-
-	const handleSave = async () => {
-		setSaving(true);
-		setErr(null);
-		try {
-			await onSave({
-				name: form.name,
-				role: form.role,
-				desc: form.desc,
-				img: form.img,
-				position: form.position !== '' ? Number(form.position) : undefined,
-			});
-		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка сохранения');
-		} finally {
-			setSaving(false);
-		}
-	};
-
-	return (
-		<div className="flex flex-col gap-3">
-			{err && <ErrorBox msg={err} />}
-			<label>
-				<span className={lbl}>Позиция (1–{maxPos})</span>
-				<input
-					className={inp}
-					value={form.position}
-					onChange={set('position')}
-					type="number"
-					min={1}
-					max={maxPos}
-					placeholder="авто"
-				/>
-			</label>
-			<label>
-				<span className={lbl}>Имя</span>
-				<input
-					className={inp}
-					value={form.name}
-					onChange={set('name')}
-					placeholder="Иванов Иван Иванович"
-				/>
-			</label>
-			<label>
-				<span className={lbl}>Должность</span>
-				<input
-					className={inp}
-					value={form.role}
-					onChange={set('role')}
-					placeholder="Профессор кафедры математики"
-				/>
-			</label>
-			<label>
-				<span className={lbl}>Описание</span>
-				<textarea
-					className={inp + ' resize-none h-20'}
-					value={form.desc}
-					onChange={set('desc')}
-					placeholder="Краткая биография..."
-				/>
-			</label>
-			<label>
-				<span className={lbl}>Фото (URL или путь)</span>
-				<input
-					className={inp}
-					value={form.img}
-					onChange={set('img')}
-					placeholder="/images/teacher.jpg"
-				/>
-			</label>
-			<div className="flex gap-2 mt-1">
-				<button
-					onClick={handleSave}
-					disabled={saving || busy}
-					className="flex-1 py-2 rounded-xl bg-blue-700 text-white font-semibold text-sm hover:bg-blue-800 active:scale-95 transition-all disabled:opacity-40"
-				>
-					{saving ? 'Сохранение...' : 'Сохранить'}
-				</button>
-				<button
-					onClick={onCancel}
-					disabled={saving || busy}
-					className="flex-1 py-2 rounded-xl border-2 border-blue-200 text-blue-700 font-semibold text-sm hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-40"
-				>
-					Отмена
-				</button>
-			</div>
-		</div>
-	);
-}
-
-function TeacherCard({
-	teacher,
-	section,
-	maxId,
-	onChanged,
-}: {
-	teacher: Teacher;
-	section: TeacherSection;
-	maxId: number;
-	onChanged: () => void;
-}) {
-	const { update, remove } = useTeachers(section);
-	const [editing, setEditing] = useState(false);
-	const [confirmDel, setConfirmDel] = useState(false);
-	const [busy, setBusy] = useState(false);
-	const [err, setErr] = useState<string | null>(null);
-
-	const handleSave = async (data: TeacherMutation) => {
-		setBusy(true);
-		try {
-			await update(teacher.id, data);
-			setEditing(false);
-			onChanged();
-		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка');
-		} finally {
-			setBusy(false);
-		}
-	};
-
-	const handleDelete = async () => {
-		setBusy(true);
-		try {
-			await remove(teacher.id);
-			onChanged();
-		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка удаления');
-			setBusy(false);
-		}
-	};
-
-	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, y: 12 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: -8 }}
-			className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden"
-		>
-			<div className="flex items-center gap-4 p-4">
-				<div className="w-10 h-10 shrink-0 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm">
-					{teacher.id}
-				</div>
-				<div className="flex-1 min-w-0">
-					<div className="font-bold text-blue-800 text-sm truncate">
-						{teacher.name || '—'}
-					</div>
-					<div className="text-xs text-gray-500 truncate">{teacher.role || '—'}</div>
-				</div>
-				<div className="flex gap-2 shrink-0">
-					<button
-						disabled={busy}
-						onClick={() => {
-							setEditing((v) => !v);
-							setConfirmDel(false);
-							setErr(null);
-						}}
-						className="px-3 py-1.5 rounded-xl border-2 border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-40"
-					>
-						{editing ? 'Свернуть' : 'Изменить'}
-					</button>
-					{!confirmDel ? (
-						<button
-							disabled={busy}
-							onClick={() => setConfirmDel(true)}
-							className="px-3 py-1.5 rounded-xl border-2 border-red-200 text-red-500 text-xs font-semibold hover:bg-red-50 active:scale-95 transition-all disabled:opacity-40"
-						>
-							Удалить
-						</button>
-					) : (
-						<ConfirmDelete
-							onYes={handleDelete}
-							onNo={() => setConfirmDel(false)}
-							busy={busy}
-						/>
-					)}
-				</div>
-			</div>
-			{err && (
-				<div className="px-4 pb-2">
-					<ErrorBox msg={err} />
-				</div>
-			)}
-			<AnimatePresence>
-				{editing && (
-					<motion.div
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: 'auto', opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.2 }}
-						className="overflow-hidden"
-					>
-						<div className="px-4 pb-4 pt-4 border-t-2 border-blue-50">
-							<TeacherForm
-								initial={teacher}
-								maxPos={maxId}
-								onSave={handleSave}
-								onCancel={() => setEditing(false)}
-								busy={busy}
-							/>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
-		</motion.div>
-	);
-}
-
-function TeachersPanel({ section }: { section: TeacherSection }) {
-	const { teachers, loading, error, add, reset, reload } = useTeachers(section);
-	const [adding, setAdding] = useState(false);
-	const [confirmReset, setConfirmReset] = useState(false);
-	const [busy, setBusy] = useState(false);
-	const [addErr, setAddErr] = useState<string | null>(null);
-
-	const handleAdd = async (data: TeacherMutation) => {
-		setBusy(true);
-		setAddErr(null);
-		try {
-			await add(data);
-			setAdding(false);
-		} catch (error) {
-			setAddErr(error instanceof Error ? error.message : 'Ошибка');
-		} finally {
-			setBusy(false);
-		}
-	};
-
-	const handleReset = async () => {
-		setBusy(true);
-		await reset();
-		setConfirmReset(false);
-		setBusy(false);
-	};
-
-	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex gap-2 flex-wrap">
-				<button
-					onClick={() => {
-						setAdding((v) => !v);
-						setAddErr(null);
-					}}
-					disabled={busy}
-					className="px-4 py-2 rounded-xl bg-blue-700 text-white font-semibold text-sm hover:bg-blue-800 active:scale-95 transition-all shadow-md disabled:opacity-40"
-				>
-					{adding ? '✕ Отмена' : '+ Добавить (с данными)'}
-				</button>
-				<button
-					onClick={() => {
-						setBusy(true);
-						add({}).finally(() => setBusy(false));
-					}}
-					disabled={busy}
-					className="px-4 py-2 rounded-xl border-2 border-blue-300 text-blue-700 font-semibold text-sm hover:bg-blue-50 active:scale-95 transition-all disabled:opacity-40"
-				>
-					+ Быстрое добавление
-				</button>
-				<div className="flex-1" />
-				{!confirmReset ? (
-					<button
-						onClick={() => setConfirmReset(true)}
-						className="px-4 py-2 rounded-xl border-2 border-red-200 text-red-500 font-semibold text-sm hover:bg-red-50 active:scale-95 transition-all"
-					>
-						Сбросить к исходным
-					</button>
-				) : (
-					<div className="flex gap-2 items-center">
-						<span className="text-red-500 text-sm font-semibold">Вы уверены?</span>
-						<button
-							onClick={handleReset}
-							className="px-3 py-1.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 active:scale-95 transition-all"
-						>
-							Да
-						</button>
-						<button
-							onClick={() => setConfirmReset(false)}
-							className="px-3 py-1.5 rounded-xl border-2 border-gray-200 text-gray-500 text-sm font-semibold hover:bg-gray-50 active:scale-95 transition-all"
-						>
-							Нет
-						</button>
-					</div>
-				)}
-			</div>
-
-			<AnimatePresence>
-				{adding && (
-					<motion.div
-						initial={{ opacity: 0, y: -8 }}
-						animate={{ opacity: 1, y: 0 }}
-						exit={{ opacity: 0, y: -8 }}
-						className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4"
-					>
-						<p className="text-blue-700 font-bold text-sm mb-3">Новый преподаватель</p>
-						{addErr && (
-							<div className="mb-3">
-								<ErrorBox msg={addErr} />
-							</div>
-						)}
-						<TeacherForm
-							initial={{}}
-							maxPos={teachers.length + 1}
-							onSave={handleAdd}
-							onCancel={() => {
-								setAdding(false);
-								setAddErr(null);
-							}}
-							busy={busy}
-						/>
-					</motion.div>
-				)}
-			</AnimatePresence>
-
-			{loading && <div className="text-center text-blue-600 py-8">Загрузка...</div>}
-			{error && <div className="text-center text-red-500 py-8">{error}</div>}
-
-			<div className="flex flex-col gap-3">
-				<AnimatePresence>
-					{teachers.map((t) => (
-						<TeacherCard
-							key={t.id}
-							teacher={t}
-							section={section}
-							maxId={teachers.length}
-							onChanged={reload}
-						/>
-					))}
-				</AnimatePresence>
-				{!loading && teachers.length === 0 && (
-					<div className="text-center text-gray-400 py-12 text-sm">
-						Список пуст. Добавьте первого преподавателя.
-					</div>
-				)}
-			</div>
-		</div>
-	);
-}
-
-// ═══════════════════════════════════════════════════════════════
 // ПАНЕЛЬ: РЕКТОРЫ
 // ═══════════════════════════════════════════════════════════════
 function RectorsPanel() {
@@ -480,16 +69,18 @@ function RectorsPanel() {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex gap-2">
-				<button
+				<AdminButton
 					onClick={() => {
 						setAdding((v) => !v);
 						setAddErr(null);
 					}}
 					disabled={busy}
-					className="px-4 py-2 rounded-xl bg-blue-700 text-white font-semibold text-sm hover:bg-blue-800 active:scale-95 transition-all shadow-md disabled:opacity-40"
+					variant="primary"
+					size="md"
+					className="shadow-md hover:shadow-lg"
 				>
 					{adding ? '✕ Отмена' : '+ Добавить ректора'}
-				</button>
+				</AdminButton>
 			</div>
 			<AnimatePresence>
 				{adding && (
@@ -523,7 +114,11 @@ function RectorsPanel() {
 				<AnimatePresence>
 					{rectors.map((r) => (
 						<RectorCard
-							key={r.id}
+							// Важно: если на бэке `id`/позиции могут пересчитываться после удаления,
+							// key по `id` даст React шанс переиспользовать карточку для другой записи,
+							// и локальный UI-state ("Удалить? Да/Нет") может "переехать".
+							// Делаем key стабильным по содержимому записи, а не по позиции/порядку.
+							key={`rector:${r.name}:${r.years}:${r.img}:${r.description}:${r.full_text}`}
 							rector={r}
 							onUpdate={update}
 							onDelete={remove}

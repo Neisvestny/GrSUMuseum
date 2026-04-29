@@ -18,6 +18,11 @@ interface RectorInput {
 	position?: number;
 }
 
+function extractYear(years: string): number {
+	const match = years.match(/\d{4}/);
+	return match ? Number(match[0]) : 0;
+}
+
 export class RectorsService {
 	constructor(private db: Pool) {}
 
@@ -48,33 +53,58 @@ export class RectorsService {
 			img = '',
 			images = [],
 			files = [],
-			position,
 		} = data;
 
-		// Фильтруем мусор — пустые строки в массивах не нужны в БД
 		const cleanImages = images.filter((s) => s.trim() !== '');
 		const cleanFiles = files.filter((f) => f.name.trim() !== '' || f.url.trim() !== '');
 
+		const newYear = extractYear(years);
+
 		const client = await this.db.connect();
+
 		try {
 			await client.query('BEGIN');
 
-			const countRes = await client.query<{ count: string }>('SELECT COUNT(*) FROM rectors');
-			const count = Number(countRes.rows[0].count);
-			const insertPos =
-				position !== undefined
-					? Math.max(1, Math.min(Number(position), count + 1))
-					: count + 1;
+			// 🔥 найти позицию, куда вставлять
+			const posRes = await client.query<{ pos: number }>(
+				`
+				SELECT position as pos
+				FROM rectors
+				WHERE CAST(SPLIT_PART(years, '—', 1) AS INTEGER) > $1
+				ORDER BY position ASC
+				LIMIT 1
+			`,
+				[newYear],
+			);
 
-			await client.query('UPDATE rectors SET position = position + 1 WHERE position >= $1', [
-				insertPos,
-			]);
+			let insertPos: number;
 
+			if (posRes.rows.length > 0) {
+				insertPos = posRes.rows[0].pos;
+			} else {
+				const countRes = await client.query<{ count: string }>(
+					'SELECT COUNT(*) FROM rectors',
+				);
+				insertPos = Number(countRes.rows[0].count) + 1;
+			}
+
+			// 🔥 безопасный сдвиг (без конфликта уникальности)
+			await client.query(
+				'UPDATE rectors SET position = position + 100000 WHERE position >= $1',
+				[insertPos],
+			);
+
+			await client.query(
+				'UPDATE rectors SET position = position - 99999 WHERE position >= $1 + 100000',
+				[insertPos],
+			);
+
+			// вставляем
 			const result = await client.query<RectorRow>(
 				`INSERT INTO rectors
-                    (position, name, years, description, full_text, img, images, files)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                RETURNING *`,
+					(position, name, years, description, full_text, img, images, files)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+				RETURNING *`,
 				[
 					insertPos,
 					name,

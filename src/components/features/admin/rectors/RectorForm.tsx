@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import type { Rector } from '../../../../api/rectors';
 import { InlineError } from '../../../design-system/States';
+import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import ImagePathInput from '../ui/ImagePathInput';
+import YearsRangeInput from '../ui/YearsRangeInput';
 import { EMPTY_RECTOR } from './constants';
 
 type Props = {
@@ -10,9 +13,8 @@ type Props = {
 	busy: boolean;
 };
 
-const inp =
-	'w-full px-3 py-2 rounded-xl border-2 border-blue-200 bg-white text-gray-800 text-sm focus:outline-none focus:border-blue-500 transition-colors';
-const lbl = 'text-xs font-semibold text-blue-700 mb-1 block';
+const inp = adminInputClass;
+const lbl = adminLabelClass;
 
 export default function RectorForm({ initial, onSave, onCancel, busy }: Props) {
 	const [form, setForm] = useState<Partial<Rector>>({
@@ -23,6 +25,7 @@ export default function RectorForm({ initial, onSave, onCancel, busy }: Props) {
 	});
 	const [saving, setSaving] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
+	const [yearsErr, setYearsErr] = useState<string | null>(null);
 
 	const set = <K extends keyof Rector>(k: K, v: Rector[K]) => setForm((f) => ({ ...f, [k]: v }));
 	const setImage = (idx: number, val: string) => {
@@ -39,6 +42,10 @@ export default function RectorForm({ initial, onSave, onCancel, busy }: Props) {
 	const handleSave = async () => {
 		if (!form.name?.trim()) {
 			setErr('Введите ФИО ректора');
+			return;
+		}
+		if (yearsErr) {
+			setErr(yearsErr);
 			return;
 		}
 		setSaving(true);
@@ -64,15 +71,12 @@ export default function RectorForm({ initial, onSave, onCancel, busy }: Props) {
 					placeholder="Иванов Иван Иванович"
 				/>
 			</label>
-			<label>
-				<span className={lbl}>Годы правления</span>
-				<input
-					className={inp}
-					value={form.years ?? ''}
-					onChange={(e) => set('years', e.target.value)}
-					placeholder="1940 — 1950"
-				/>
-			</label>
+			<YearsRangeInput
+				label="Годы работы"
+				value={form.years ?? ''}
+				onChange={(next) => set('years', next)}
+				onErrorChange={setYearsErr}
+			/>
 			<label>
 				<span className={lbl}>Краткое описание</span>
 				<textarea
@@ -91,15 +95,7 @@ export default function RectorForm({ initial, onSave, onCancel, busy }: Props) {
 					placeholder="Подробный текст для страницы ректора"
 				/>
 			</label>
-			<label>
-				<span className={lbl}>Главное фото (URL или /путь)</span>
-				<input
-					className={inp}
-					value={form.img ?? ''}
-					onChange={(e) => set('img', e.target.value)}
-					placeholder="/images/rector.jpg"
-				/>
-			</label>
+			<ImagePathInput value={form.img ?? ''} onChange={(next) => set('img', next)} />
 
 			<div>
 				<span className={lbl}>Галерея фотографий</span>
