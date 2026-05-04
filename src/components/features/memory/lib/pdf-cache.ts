@@ -1,4 +1,4 @@
-export const PDF_PATH = '/book.pdf';
+export const PDF_PATH = '/book_vov.pdf';
 export const PDF_SCALE = 1.4;
 
 const DB_NAME = 'book-cache';
