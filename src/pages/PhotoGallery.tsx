@@ -1,17 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { fetchGalleryPhotos, type GalleryPhoto } from '../api/gallery';
 import BaseModal from '../components/design-system/BaseModal';
-import { PHOTOS, type Photo } from '../features/gallery/data/photos';
+import { ErrorState, LoadingState } from '../components/design-system/States';
 import MainLayout from '../layouts/MainLayout';
 
-// ─── Типы ───────────────────────────────
 interface YearBlock {
 	year: number;
-	photos: Photo[];
+	photos: GalleryPhoto[];
 }
 
-function groupByYear(photos: Photo[]): YearBlock[] {
-	const map = new Map<number, Photo[]>();
+function groupByYear(photos: GalleryPhoto[]): YearBlock[] {
+	const map = new Map<number, GalleryPhoto[]>();
 
 	for (const photo of photos) {
 		if (!map.has(photo.year)) map.set(photo.year, []);
@@ -23,8 +23,15 @@ function groupByYear(photos: Photo[]): YearBlock[] {
 		.map(([year, photos]) => ({ year, photos }));
 }
 
-// ─── Лайтбокс ───────────────────────────
-function Lightbox({ photo, year, onClose }: { photo: Photo; year: number; onClose: () => void }) {
+function Lightbox({
+	photo,
+	year,
+	onClose,
+}: {
+	photo: GalleryPhoto;
+	year: number;
+	onClose: () => void;
+}) {
 	return (
 		<BaseModal
 			onClose={onClose}
@@ -88,14 +95,13 @@ function Lightbox({ photo, year, onClose }: { photo: Photo; year: number; onClos
 	);
 }
 
-// ─── Карточка фото ──────────────────────
 function PhotoCard({
 	photo,
 	year,
 	index,
 	onClick,
 }: {
-	photo: Photo;
+	photo: GalleryPhoto;
 	year: number;
 	index: number;
 	onClick: () => void;
@@ -173,9 +179,8 @@ function PhotoCard({
 	);
 }
 
-// ─── Блок года ──────────────────────────
 function YearSection({ block, globalIndex }: { block: YearBlock; globalIndex: number }) {
-	const [selected, setSelected] = useState<Photo | null>(null);
+	const [selected, setSelected] = useState<GalleryPhoto | null>(null);
 
 	return (
 		<>
@@ -241,28 +246,53 @@ function YearSection({ block, globalIndex }: { block: YearBlock; globalIndex: nu
 	);
 }
 
-// ─── Главный компонент ──────────────────
 export default function PhotoGallery() {
-	const gallery = groupByYear(PHOTOS);
+	const [photos, setPhotos] = useState<GalleryPhoto[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				setPhotos(await fetchGalleryPhotos());
+			} catch (error) {
+				setError(
+					error instanceof Error ? error.message : 'Не удалось загрузить фотогалерею',
+				);
+			} finally {
+				setLoading(false);
+			}
+		})();
+	}, []);
+
+	const gallery = groupByYear(photos);
 
 	return (
 		<MainLayout title="Фотогалерея">
-			<div className="mb-8 flex items-center gap-4">
-				<div className="h-px flex-1 bg-gradient-to-r from-transparent to-stone-700/40" />
-				<p
-					className="text-stone-500 text-xs tracking-[0.3em] uppercase"
-					style={{ fontFamily: 'Georgia, serif' }}
-				>
-					Архив · {PHOTOS.length} фотографий
-				</p>
-				<div className="h-px flex-1 bg-gradient-to-l from-transparent to-stone-700/40" />
-			</div>
+			{loading && <LoadingState />}
+			{error && <ErrorState text={error} />}
+			{!loading && !error && (
+				<>
+					<div className="mb-8 flex items-center gap-4">
+						<div className="h-px flex-1 bg-gradient-to-r from-transparent to-stone-700/40" />
+						<p
+							className="text-stone-500 text-xs tracking-[0.3em] uppercase"
+							style={{ fontFamily: 'Georgia, serif' }}
+						>
+							Архив · {photos.length} фотографий
+						</p>
+						<div className="h-px flex-1 bg-gradient-to-l from-transparent to-stone-700/40" />
+					</div>
 
-			<div className="overflow-y-auto flex-1 pr-1">
-				{gallery.map((block, i) => (
-					<YearSection key={block.year} block={block} globalIndex={i} />
-				))}
-			</div>
+					<div className="overflow-y-auto flex-1 pr-1">
+						{gallery.map((block, i) => (
+							<YearSection key={block.year} block={block} globalIndex={i} />
+						))}
+					</div>
+				</>
+			)}
 		</MainLayout>
 	);
 }

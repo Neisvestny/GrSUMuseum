@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { RectorsController } from '../controllers/rectors.controller';
-import { pool } from '../db/pool';
+import { prisma } from '../db/prisma';
 import { RectorsService } from '../services/rectors.service';
 
-const service = new RectorsService(pool);
+const service = new RectorsService(prisma);
 const controller = new RectorsController(service);
 
 export const rectorsRouter = Router();

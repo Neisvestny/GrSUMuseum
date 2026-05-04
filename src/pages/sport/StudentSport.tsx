@@ -1,15 +1,13 @@
-import TextImagePanel from '../../components/patterns/TextImagePanel';
+import CmsPageContent from '../../components/patterns/CmsPageContent';
+import { usePageBySlug } from '../../hooks/cms/usePageBySlug';
 import MainLayout from '../../layouts/MainLayout';
 
 export default function StudentSport() {
+	const { page, loading, error } = usePageBySlug('student-sport');
+
 	return (
 		<MainLayout title="Студенческий спорт">
-			<TextImagePanel
-				title="Студенческий спорт в ГрГУ"
-				text="Здесь будет размещена типовая информация о спортивных секциях, соревнованиях, университетских командах и достижениях студентов."
-				imageSrc="/images/teachers-institute.jpg"
-				imageAlt="Студенческий спорт"
-			/>
+			<CmsPageContent page={page} loading={loading} error={error} />
 		</MainLayout>
 	);
 }

@@ -87,7 +87,7 @@ export default function Rectors() {
 				</div>
 			</div>
 
-			{/* ИНДИКАТОР СКРОЛЛА — фиксирован внизу экрана */}
+			{/* индикатор скролла*/}
 			<div
 				className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-opacity duration-500"
 				style={{ opacity: atBottom ? 0 : 1 }}

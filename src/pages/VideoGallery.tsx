@@ -1,11 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { VIDEOS, type VideoItem } from '../features/gallery/data/videos';
+import { fetchGalleryVideos, type GalleryVideo } from '../api/gallery';
+import { ErrorState, LoadingState } from '../components/design-system/States';
 import MainLayout from '../layouts/MainLayout';
 
-// ─── Типы ───────────────────────────────
-
-// ─── Утилиты ────────────────────────────
 function getYoutubeId(url: string): string | null {
 	const match = url.match(
 		/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
@@ -26,14 +24,13 @@ function getThumbnail(src: string): string | null {
 	return ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null;
 }
 
-function getAllTags(videos: VideoItem[]): string[] {
+function getAllTags(videos: GalleryVideo[]): string[] {
 	const set = new Set<string>();
 	for (const v of videos) v.tags.forEach((t) => set.add(t));
 	return ['Все', ...Array.from(set).sort()];
 }
 
-// ─── Модальное окно ──────────────────────
-function VideoModal({ video, onClose }: { video: VideoItem; onClose: () => void }) {
+function VideoModal({ video, onClose }: { video: GalleryVideo; onClose: () => void }) {
 	const embedUrl = getEmbedUrl(video.src);
 
 	useEffect(() => {
@@ -144,13 +141,12 @@ function VideoModal({ video, onClose }: { video: VideoItem; onClose: () => void 
 	);
 }
 
-// ─── Карточка видео ─────────────────────
 function VideoCard({
 	video,
 	index,
 	onClick,
 }: {
-	video: VideoItem;
+	video: GalleryVideo;
 	index: number;
 	onClick: () => void;
 }) {
@@ -264,8 +260,8 @@ function VideoCard({
 					</div>
 				)}
 
-				{/* External badge */}
-				{video.isExternal && (
+				{/* пометка, что видео с ютуба */}
+				{video.is_external && (
 					<div
 						className="absolute top-2.5 left-2.5 px-2 py-0.5 text-xs font-semibold flex items-center gap-1"
 						style={{
@@ -320,7 +316,6 @@ function VideoCard({
 	);
 }
 
-// ─── Фильтр-бар ─────────────────────────
 function FilterBar({
 	tags,
 	active,
@@ -384,51 +379,79 @@ function FilterBar({
 	);
 }
 
-// ─── Главный компонент ──────────────────
 export default function VideoGallery() {
-	const allTags = getAllTags(VIDEOS);
+	const [videos, setVideos] = useState<GalleryVideo[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
 	const [activeTag, setActiveTag] = useState('Все');
-	const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
+	const [selectedVideo, setSelectedVideo] = useState<GalleryVideo | null>(null);
+
+	useEffect(() => {
+		(async () => {
+			try {
+				setLoading(true);
+				setError(null);
+				setVideos(await fetchGalleryVideos());
+			} catch (error) {
+				setError(
+					error instanceof Error ? error.message : 'Не удалось загрузить видеогалерею',
+				);
+			} finally {
+				setLoading(false);
+			}
+		})();
+	}, []);
+
+	const allTags = getAllTags(videos);
 
 	const filtered =
-		activeTag === 'Все' ? VIDEOS : VIDEOS.filter((v) => v.tags.includes(activeTag));
+		activeTag === 'Все' ? videos : videos.filter((v) => v.tags.includes(activeTag));
 
 	return (
 		<MainLayout title="Видеогалерея">
-			<FilterBar
-				tags={allTags}
-				active={activeTag}
-				onSelect={setActiveTag}
-				count={filtered.length}
-			/>
+			{loading && <LoadingState />}
+			{error && <ErrorState text={error} />}
+			{!loading && !error && (
+				<>
+					<FilterBar
+						tags={allTags}
+						active={activeTag}
+						onSelect={setActiveTag}
+						count={filtered.length}
+					/>
 
-			<div className="overflow-y-auto flex-1 pr-1">
-				<AnimatePresence mode="wait">
-					<motion.div
-						key={activeTag}
-						initial={{ opacity: 0, y: 6 }}
-						animate={{ opacity: 1, y: 0 }}
-						exit={{ opacity: 0, y: -6 }}
-						transition={{ duration: 0.18 }}
-						className="grid grid-cols-3 gap-4"
-					>
-						{filtered.map((video, i) => (
-							<VideoCard
-								key={video.id}
-								video={video}
-								index={i}
-								onClick={() => setSelectedVideo(video)}
+					<div className="overflow-y-auto flex-1 pr-1">
+						<AnimatePresence mode="wait">
+							<motion.div
+								key={activeTag}
+								initial={{ opacity: 0, y: 6 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, y: -6 }}
+								transition={{ duration: 0.18 }}
+								className="grid grid-cols-3 gap-4"
+							>
+								{filtered.map((video, i) => (
+									<VideoCard
+										key={video.id}
+										video={video}
+										index={i}
+										onClick={() => setSelectedVideo(video)}
+									/>
+								))}
+							</motion.div>
+						</AnimatePresence>
+					</div>
+
+					<AnimatePresence>
+						{selectedVideo && (
+							<VideoModal
+								video={selectedVideo}
+								onClose={() => setSelectedVideo(null)}
 							/>
-						))}
-					</motion.div>
-				</AnimatePresence>
-			</div>
-
-			<AnimatePresence>
-				{selectedVideo && (
-					<VideoModal video={selectedVideo} onClose={() => setSelectedVideo(null)} />
-				)}
-			</AnimatePresence>
+						)}
+					</AnimatePresence>
+				</>
+			)}
 		</MainLayout>
 	);
 }

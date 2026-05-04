@@ -21,8 +21,6 @@ export default function TeacherCard({ teacher, section, maxId, onChanged }: Prop
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
 
-	// В teachers id может быть "позиция" и меняться после удаления.
-	// Если React переиспользовал карточку для другой записи — сбросим локальный UI-state.
 	useEffect(() => {
 		setEditing(false);
 		setConfirmDel(false);

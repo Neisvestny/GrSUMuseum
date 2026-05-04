@@ -2,7 +2,7 @@ import { apiRequest } from '../shared/api/client';
 
 export type ImagesIndex = {
 	files: string[];
-	baseUrl: string; // usually "/images/"
+	baseUrl: string;
 };
 
 export async function fetchImagesIndex(query?: string): Promise<ImagesIndex> {

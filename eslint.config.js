@@ -7,7 +7,6 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
 	{
-		// Глобальное игнорирование папок
 		ignores: ['dist', 'node_modules'],
 	},
 	{
@@ -28,7 +27,6 @@ export default tseslint.config(
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/no-unsafe-argument': 'off',
 
-			// полезные
 			'@typescript-eslint/consistent-type-imports': 'warn',
 			'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
 			'react-hooks/set-state-in-effect': 'off',

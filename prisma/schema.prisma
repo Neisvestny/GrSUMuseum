@@ -1,0 +1,178 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../server/generated/prisma"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model cms_entities {
+  id             Int        @id @default(autoincrement())
+  entity_type    String
+  slug           String
+  title          String
+  data           Json       @default("{}")
+  status         String     @default("draft")
+  detail_page_id Int?
+  created_at     DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime   @default(now()) @db.Timestamptz(6)
+  cms_pages      cms_pages? @relation(fields: [detail_page_id], references: [id], onUpdate: NoAction)
+
+  @@unique([entity_type, slug])
+}
+
+model cms_page_blocks {
+  id              Int       @id @default(autoincrement())
+  page_id         Int
+  type            String
+  position        Int
+  payload         Json      @default("{}")
+  is_visible      Boolean   @default(true)
+  payload_version Int       @default(1)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  cms_pages       cms_pages @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([page_id, position])
+  @@index([payload], map: "cms_page_blocks_payload_gin", type: Gin)
+}
+
+model cms_pages {
+  id               Int               @id @default(autoincrement())
+  parent_id        Int?
+  slug             String
+  full_path        String            @unique
+  title            String
+  kind             String            @default("page")
+  status           String            @default("published")
+  nav_title        String?
+  meta_title       String?
+  meta_description String?
+  show_in_nav      Boolean           @default(true)
+  sort_order       Int               @default(1)
+  legacy_page_id   Int?
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  cms_entities     cms_entities[]
+  cms_page_blocks  cms_page_blocks[]
+  pages            pages?            @relation(fields: [legacy_page_id], references: [id], onUpdate: NoAction)
+  cms_pages        cms_pages?        @relation("cms_pagesTocms_pages", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_cms_pages  cms_pages[]       @relation("cms_pagesTocms_pages")
+
+  @@index([parent_id, sort_order], map: "cms_pages_parent_sort_idx")
+}
+
+model cms_redirects {
+  id         Int      @id @default(autoincrement())
+  from_path  String   @unique
+  to_path    String
+  http_code  Int      @default(301)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model gallery_photos {
+  id         Int    @id @default(autoincrement())
+  src        String
+  title      String
+  annotation String @default("")
+  year       Int
+  position   Int    @default(1)
+
+  @@unique([year, position])
+}
+
+model gallery_videos {
+  id          Int      @id @default(autoincrement())
+  src         String
+  title       String
+  description String   @default("")
+  tags        String[] @default([])
+  duration    String?
+  is_external Boolean  @default(false)
+  position    Int      @unique @default(1)
+}
+
+model menu_items {
+  id        Int     @id @default(autoincrement())
+  section   String
+  position  Int
+  label     String
+  path      String  @default("")
+  is_active Boolean @default(true)
+
+  @@unique([section, position])
+}
+
+model page_blocks {
+  id              Int               @id @default(autoincrement())
+  page_id         Int?
+  tab_id          Int?
+  position        Int
+  img             String?
+  pages           pages?            @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  page_tabs       page_tabs?        @relation(fields: [tab_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  page_paragraphs page_paragraphs[]
+
+  @@unique([page_id, position], map: "page_blocks_page_position_idx", where: raw("(page_id IS NOT NULL)"))
+  @@unique([tab_id, position], map: "page_blocks_tab_position_idx", where: raw("(tab_id IS NOT NULL)"))
+}
+
+model page_paragraphs {
+  id          Int         @id @default(autoincrement())
+  block_id    Int
+  position    Int
+  text        String
+  page_blocks page_blocks @relation(fields: [block_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([block_id, position])
+}
+
+model page_tabs {
+  id          Int           @id @default(autoincrement())
+  page_id     Int
+  position    Int
+  label       String
+  page_blocks page_blocks[]
+  pages       pages         @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([page_id, position])
+}
+
+model pages {
+  id          Int           @id @default(autoincrement())
+  slug        String        @unique
+  title       String
+  template    String        @default("tabs_alternating")
+  cms_pages   cms_pages[]
+  page_blocks page_blocks[]
+  page_tabs   page_tabs[]
+}
+
+model rectors {
+  id          Int      @id @default(autoincrement())
+  position    Int      @unique(map: "rectors_position_idx") @default(1)
+  name        String   @default("")
+  years       String   @default("")
+  description String   @default("")
+  full_text   String   @default("")
+  img         String   @default("")
+  images      String[] @default([])
+  files       Json     @default("[]")
+}
+
+model teachers {
+  id          Int       @default(autoincrement())
+  section     String    @db.VarChar(10)
+  position    Int
+  name        String    @default("Новый преподаватель") @db.VarChar(255)
+  role        String    @default("") @db.VarChar(255)
+  description String    @default("")
+  img         String    @default("") @db.VarChar(500)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@id([section, position])
+  @@index([section], map: "idx_teachers_section")
+}

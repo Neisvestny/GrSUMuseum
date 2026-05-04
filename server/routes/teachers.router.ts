@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { TeachersController } from '../controllers/teachers.controller';
-import { pool } from '../db/pool';
+import { prisma } from '../db/prisma';
 import { TeachersService } from '../services/teachers.service';
 
-const service = new TeachersService(pool);
+const service = new TeachersService(prisma);
 const controller = new TeachersController(service);
 
 export const teachersRouter = Router();
@@ -12,7 +12,7 @@ export const teachersRouter = Router();
 // teachersRouter.use(authMiddleware);
 
 teachersRouter.get('/:section', controller.getAll);
-teachersRouter.post('/:section/reset', controller.reset); // ← ВАЖНО: до /:section/:position
+teachersRouter.post('/:section/reset', controller.reset);
 teachersRouter.post('/:section', controller.create);
 teachersRouter.put('/:section/:position', controller.update);
 teachersRouter.delete('/:section/:position', controller.delete);

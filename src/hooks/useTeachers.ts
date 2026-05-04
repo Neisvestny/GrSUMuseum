@@ -27,7 +27,7 @@ export function useTeachers(section: TeacherSection) {
 
 	const add = async (data: TeacherMutation) => {
 		const teacher = await api.createTeacher(section, data);
-		await load(); // перезагружаем чтобы позиции были актуальны
+		await load();
 		return teacher;
 	};
 

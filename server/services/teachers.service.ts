@@ -1,24 +1,23 @@
-import type { Pool } from 'pg';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import type { Section, TeacherRow } from '../types';
 
 export class TeachersService {
-	constructor(private db: Pool) {}
+	constructor(private prisma: PrismaClient) {}
 
-	// Получить всех преподавателей секции, отсортированных по позиции
 	async getAll(section: Section): Promise<TeacherRow[]> {
-		const result = await this.db.query<TeacherRow>(
-			`SELECT position AS id, name, role, description AS desc, img
-            FROM teachers
-            WHERE section = $1
-            ORDER BY position ASC`,
-			[section],
-		);
-		return result.rows;
+		const rows = await this.prisma.teachers.findMany({
+			where: { section },
+			orderBy: { position: 'asc' },
+		});
+		return rows.map((r) => ({
+			id: r.position,
+			name: r.name,
+			role: r.role,
+			desc: r.description,
+			img: r.img,
+		}));
 	}
 
-	// Создать преподавателя.
-	// Если position не передан — вставляем в конец списка.
-	// Если передан — сдвигаем остальных вниз и вставляем на нужное место.
 	async create(
 		section: Section,
 		data: {
@@ -31,51 +30,39 @@ export class TeachersService {
 	): Promise<TeacherRow> {
 		const { name = 'Новый преподаватель', role = '', desc = '', img = '', position } = data;
 
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
-
-			const countRes = await client.query<{ count: string }>(
-				'SELECT COUNT(*) FROM teachers WHERE section = $1',
-				[section],
-			);
-			const count = Number(countRes.rows[0].count);
-
-			// Зажимаем позицию в допустимый диапазон [1, count+1]
+		return this.prisma.$transaction(async (tx) => {
+			const count = await tx.teachers.count({ where: { section } });
 			const insertPos =
 				position !== undefined
 					? Math.max(1, Math.min(Number(position), count + 1))
 					: count + 1;
 
-			// Сдвигаем вниз всех у кого position >= insertPos
-			await client.query(
-				`UPDATE teachers
-                SET position = position + 1
-                WHERE section = $1 AND position >= $2`,
-				[section, insertPos],
-			);
+			await tx.teachers.updateMany({
+				where: { section, position: { gte: insertPos } },
+				data: { position: { increment: 1 } },
+			});
 
-			const result = await client.query<TeacherRow>(
-				`INSERT INTO teachers (section, position, name, role, description, img)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING position AS id, name, role, description AS desc, img`,
-				[section, insertPos, name, role, desc, img],
-			);
+			const row = await tx.teachers.create({
+				data: {
+					section,
+					position: insertPos,
+					name,
+					role,
+					description: desc,
+					img,
+				},
+			});
 
-			await client.query('COMMIT');
-			return result.rows[0];
-		} catch (err) {
-			await client.query('ROLLBACK');
-			// FIXME: если упадёт уникальный индекс на position — здесь будет невнятная ошибка.
-			// Нужно поймать PostgresError с code '23505' и бросать понятное сообщение.
-			throw err;
-		} finally {
-			client.release();
-		}
+			return {
+				id: row.position,
+				name: row.name,
+				role: row.role,
+				desc: row.description,
+				img: row.img,
+			};
+		});
 	}
 
-	// Обновить преподавателя по позиции.
-	// Если передан новый position — перемещаем запись, сдвигая соседей.
 	async update(
 		section: Section,
 		currentPos: number,
@@ -89,126 +76,93 @@ export class TeachersService {
 	): Promise<TeacherRow | null> {
 		const { name, role, desc, img, position: newPos } = data;
 
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
+		return this.prisma.$transaction(async (tx) => {
+			const existing = await tx.teachers.findUnique({
+				where: { section_position: { section, position: currentPos } },
+			});
+			if (!existing) return null;
 
-			// Проверяем что запись вообще существует
-			const existing = await client.query(
-				'SELECT * FROM teachers WHERE section = $1 AND position = $2',
-				[section, currentPos],
-			);
-			if (existing.rows.length === 0) return null;
+			let resultPos = currentPos;
 
 			if (newPos !== undefined && Number(newPos) !== currentPos) {
-				// Перемещение записи
-				const countRes = await client.query<{ count: string }>(
-					'SELECT COUNT(*) FROM teachers WHERE section = $1',
-					[section],
-				);
-				const count = Number(countRes.rows[0].count);
+				const count = await tx.teachers.count({ where: { section } });
 				const targetPos = Math.max(1, Math.min(Number(newPos), count));
+				resultPos = targetPos;
 
-				// Временно ставим position = 0 чтобы не словить конфликт уникальности
-				await client.query(
-					'UPDATE teachers SET position = 0 WHERE section = $1 AND position = $2',
-					[section, currentPos],
-				);
+				await tx.teachers.update({
+					where: { section_position: { section, position: currentPos } },
+					data: { position: 0 },
+				});
 
 				if (targetPos > currentPos) {
-					// Сдвигаем вверх всех между currentPos+1 и targetPos
-					await client.query(
-						`UPDATE teachers
-                        SET position = position - 1
-                        WHERE section = $1 AND position > $2 AND position <= $3`,
-						[section, currentPos, targetPos],
-					);
+					await tx.teachers.updateMany({
+						where: {
+							section,
+							position: { gt: currentPos, lte: targetPos },
+						},
+						data: { position: { decrement: 1 } },
+					});
 				} else {
-					// Сдвигаем вниз всех между targetPos и currentPos-1
-					await client.query(
-						`UPDATE teachers
-                        SET position = position + 1
-                        WHERE section = $1 AND position >= $2 AND position < $3`,
-						[section, targetPos, currentPos],
-					);
+					await tx.teachers.updateMany({
+						where: {
+							section,
+							position: { gte: targetPos, lt: currentPos },
+						},
+						data: { position: { increment: 1 } },
+					});
 				}
 
-				await client.query(
-					`UPDATE teachers
-                    SET position    = $1,
-                        name        = COALESCE($2, name),
-                        role        = COALESCE($3, role),
-                        description = COALESCE($4, description),
-                        img         = COALESCE($5, img)
-                    WHERE section = $6 AND position = 0`,
-					[targetPos, name ?? null, role ?? null, desc ?? null, img ?? null, section],
-				);
+				await tx.teachers.update({
+					where: { section_position: { section, position: 0 } },
+					data: {
+						position: targetPos,
+						name: name ?? undefined,
+						role: role ?? undefined,
+						description: desc ?? undefined,
+						img: img ?? undefined,
+					},
+				});
 			} else {
-				// Просто обновляем поля без смены позиции
-				await client.query(
-					`UPDATE teachers
-                    SET name        = COALESCE($1, name),
-                        role        = COALESCE($2, role),
-                        description = COALESCE($3, description),
-                        img         = COALESCE($4, img)
-                    WHERE section = $5 AND position = $6`,
-					[name ?? null, role ?? null, desc ?? null, img ?? null, section, currentPos],
-				);
+				await tx.teachers.update({
+					where: { section_position: { section, position: currentPos } },
+					data: {
+						name: name ?? undefined,
+						role: role ?? undefined,
+						description: desc ?? undefined,
+						img: img ?? undefined,
+					},
+				});
 			}
 
-			await client.query('COMMIT');
-
-			const finalPos = newPos !== undefined ? Number(newPos) : currentPos;
-			const updated = await this.db.query<TeacherRow>(
-				`SELECT position AS id, name, role, description AS desc, img
-                FROM teachers WHERE section = $1 AND position = $2`,
-				[section, finalPos],
-			);
-			return updated.rows[0] ?? null;
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+			const updated = await tx.teachers.findUnique({
+				where: { section_position: { section, position: resultPos } },
+			});
+			if (!updated) return null;
+			return {
+				id: updated.position,
+				name: updated.name,
+				role: updated.role,
+				desc: updated.description,
+				img: updated.img,
+			};
+		});
 	}
 
-	// Удалить преподавателя по позиции и сдвинуть остальных
 	async delete(section: Section, pos: number): Promise<boolean> {
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
+		return this.prisma.$transaction(async (tx) => {
+			const deleted = await tx.teachers.deleteMany({
+				where: { section, position: pos },
+			});
+			if (deleted.count === 0) return false;
 
-			const result = await client.query(
-				'DELETE FROM teachers WHERE section = $1 AND position = $2 RETURNING *',
-				[section, pos],
-			);
-
-			if (result.rows.length === 0) {
-				await client.query('ROLLBACK');
-				return false; // не нашли — вернём false, контроллер отдаст 404
-			}
-
-			await client.query(
-				`UPDATE teachers
-                SET position = position - 1
-                WHERE section = $1 AND position > $2`,
-				[section, pos],
-			);
-
-			await client.query('COMMIT');
+			await tx.teachers.updateMany({
+				where: { section, position: { gt: pos } },
+				data: { position: { decrement: 1 } },
+			});
 			return true;
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+		});
 	}
 
-	// Сбросить список к дефолтным данным.
-	// TODO: вынести дефолтные данные в отдельный файл seeds/teachers.seed.ts
-	// чтобы их можно было менять не трогая бизнес-логику
 	async reset(section: Section): Promise<TeacherRow[]> {
 		const defaults = [
 			{
@@ -234,32 +188,22 @@ export class TeachersService {
 			},
 		];
 
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
-			await client.query('DELETE FROM teachers WHERE section = $1', [section]);
-
+		await this.prisma.$transaction(async (tx) => {
+			await tx.teachers.deleteMany({ where: { section } });
 			for (const t of defaults) {
-				await client.query(
-					`INSERT INTO teachers (section, position, name, role, description, img)
-                    VALUES ($1, $2, $3, $4, $5, $6)`,
-					[section, t.position, t.name, t.role, t.desc, t.img],
-				);
+				await tx.teachers.create({
+					data: {
+						section,
+						position: t.position,
+						name: t.name,
+						role: t.role,
+						description: t.desc,
+						img: t.img,
+					},
+				});
 			}
+		});
 
-			await client.query('COMMIT');
-
-			const result = await this.db.query<TeacherRow>(
-				`SELECT position AS id, name, role, description AS desc, img
-                FROM teachers WHERE section = $1 ORDER BY position`,
-				[section],
-			);
-			return result.rows;
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+		return this.getAll(section);
 	}
 }

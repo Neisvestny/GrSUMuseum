@@ -2,15 +2,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import type { Request, Response } from 'express';
-import { ensureTeachersSectionConstraint } from '../db/ensure-schema';
-import { pool } from '../db/pool';
+import { prisma } from '../db/prisma';
 import { env } from '../env';
 import { createApp } from './create-app';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function bootstrap(): Promise<void> {
-	await ensureTeachersSectionConstraint(pool);
+	await prisma.$connect();
 
 	const app = createApp();
 	const staticRoot = path.join(__dirname, '../../dist');

@@ -1,22 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import { AnimatedBlobsBackground } from '../components/ui/AnimatedBlobsBackground';
 import { BLOB_PRESETS } from '../components/ui/animatedBlobsPresets';
+import { useMenuSection } from '../hooks/cms/useMenuSection';
 
 const BLOBS = BLOB_PRESETS.home;
 
-const BUTTONS = [
-	{ label: 'История ГрГУ', path: '/history' },
-	{ label: 'Спорт', path: '/sport' },
-	{ label: 'Студенческая жизнь', path: '/studentlife' },
-	{ label: 'Фотогалерея', path: '/gallery' },
-	{ label: 'Видеогалерея', path: '/video-gallery' },
-	{ label: 'Наука', path: '#1' }, // TODO: add science page
-	{ label: 'Именные аудитории', path: '#2' }, // TODO: add named rooms page
-	{ label: 'Дипломогалерея', path: '#3' }, // TODO: add diplomas gallery page
-];
-
 export default function Home() {
 	const navigate = useNavigate();
+	const { items } = useMenuSection('home');
+	const buttons = items.map((item) => ({ label: item.label, path: item.path }));
 
 	return (
 		<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col">
@@ -31,7 +23,7 @@ export default function Home() {
 				</header>
 
 				<div className="z-2 flex flex-wrap justify-center gap-6 max-w-[calc(4*320px+3*24px)]">
-					{BUTTONS.map((btn) => (
+					{buttons.map((btn) => (
 						<NavButton key={btn.path} btn={btn} navigate={navigate} />
 					))}
 				</div>

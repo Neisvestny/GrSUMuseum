@@ -1,5 +1,7 @@
+import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { env } from '../env';
+import { PrismaClient } from '../generated/prisma/client.js';
 
 export const pool = new Pool({
 	host: env.DB_HOST,
@@ -12,3 +14,7 @@ export const pool = new Pool({
 pool.on('error', (err) => {
 	console.error('PostgreSQL pool error:', err);
 });
+
+const adapter = new PrismaPg(pool);
+
+export const prisma = new PrismaClient({ adapter });

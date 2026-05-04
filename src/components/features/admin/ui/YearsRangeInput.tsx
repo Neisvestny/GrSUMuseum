@@ -3,8 +3,8 @@ import { adminInputClass, adminLabelClass } from './adminFormStyles';
 
 type Props = {
 	label?: string;
-	value: string; // <- строка из API
-	onChange: (next: string) => void; // <- строка в API
+	value: string;
+	onChange: (next: string) => void;
 	onErrorChange?: (msg: string | null) => void;
 	minYear?: number;
 	maxYear?: number;

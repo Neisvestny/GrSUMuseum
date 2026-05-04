@@ -51,7 +51,6 @@ export function useRectors() {
 		}
 	};
 
-	// Без window.confirm — пусть UI сам решает что показывать
 	const remove = async (id: number) => {
 		try {
 			await deleteRector(id);

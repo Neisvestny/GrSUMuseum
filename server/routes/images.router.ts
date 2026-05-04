@@ -23,13 +23,10 @@ function uniqSorted(arr: string[]) {
 export const imagesRouter = Router();
 
 // GET /api/images?q=rector
-// Возвращает список файлов в папке /images, доступной фронтенду.
 imagesRouter.get('/', async (req, res, next) => {
 	try {
 		const q = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
 
-		// В dev обычно Vite раздаёт "public" как корень.
-		// В prod Express раздаёт "dist" (см. bootstrap.ts), где /images лежит в dist/images.
 		const candidates = [
 			path.join(process.cwd(), 'public', 'images'),
 			path.join(process.cwd(), 'dist', 'images'),

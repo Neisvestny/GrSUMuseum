@@ -1,10 +1,12 @@
 import SectionMenuPage from '../../components/patterns/SectionMenuPage';
-
-const BUTTONS = [
-	{ label: 'Годы Великой Отечественной войны', path: '/history/memory/vov' },
-	{ label: 'Война в Афганистане', path: '/history/memory/afgan' },
-];
+import { useMenuSection } from '../../hooks/cms/useMenuSection';
 
 export default function Memory() {
-	return <SectionMenuPage title="Купаловцы помнят" items={BUTTONS} />;
+	const { items } = useMenuSection('memory');
+	return (
+		<SectionMenuPage
+			title="Купаловцы помнят"
+			items={items.map((item) => ({ label: item.label, path: item.path }))}
+		/>
+	);
 }

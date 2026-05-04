@@ -1,8 +1,4 @@
-// Сервис — вся бизнес-логика и SQL-запросы для ректоров.
-// FIXME: поле files хранится как JSONB, но pg драйвер возвращает его уже
-// как объект — не нужно делать JSON.parse на клиенте. Не ломай это.
-
-import type { Pool } from 'pg';
+import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import type { RectorRow } from '../types';
 
 type FileItem = { name: string; url: string };
@@ -23,27 +19,47 @@ function extractYear(years: string): number {
 	return match ? Number(match[0]) : 0;
 }
 
+function rowToRector(r: {
+	id: number;
+	position: number;
+	name: string;
+	years: string;
+	description: string;
+	full_text: string;
+	img: string;
+	images: string[];
+	files: Prisma.JsonValue;
+}): RectorRow {
+	return {
+		id: r.id,
+		position: r.position,
+		name: r.name,
+		years: r.years,
+		description: r.description,
+		full_text: r.full_text,
+		img: r.img,
+		images: r.images,
+		files: Array.isArray(r.files)
+			? (r.files as RectorRow['files'])
+			: typeof r.files === 'string'
+				? (JSON.parse(r.files) as RectorRow['files'])
+				: [],
+	};
+}
+
 export class RectorsService {
-	constructor(private db: Pool) {}
+	constructor(private prisma: PrismaClient) {}
 
-	// Получить всех ректоров, отсортированных по позиции
 	async getAll(): Promise<RectorRow[]> {
-		const result = await this.db.query<RectorRow>(
-			'SELECT * FROM rectors ORDER BY position ASC',
-		);
-		return result.rows;
+		const rows = await this.prisma.rectors.findMany({ orderBy: { position: 'asc' } });
+		return rows.map(rowToRector);
 	}
 
-	// Получить одного ректора по id.
-	// Возвращает null если не найден — контроллер решает что отдать клиенту.
 	async getById(id: number): Promise<RectorRow | null> {
-		const result = await this.db.query<RectorRow>('SELECT * FROM rectors WHERE id = $1', [id]);
-		return result.rows[0] ?? null;
+		const row = await this.prisma.rectors.findUnique({ where: { id } });
+		return row ? rowToRector(row) : null;
 	}
 
-	// Создать ректора.
-	// images передаём напрямую — pg сам сериализует TEXT[].
-	// files — JSON.stringify потому что колонка JSONB принимает строку.
 	async create(data: RectorInput): Promise<RectorRow> {
 		const {
 			name = '',
@@ -60,185 +76,112 @@ export class RectorsService {
 
 		const newYear = extractYear(years);
 
-		const client = await this.db.connect();
-
-		try {
-			await client.query('BEGIN');
-
-			// 🔥 найти позицию, куда вставлять
-			const posRes = await client.query<{ pos: number }>(
-				`
-				SELECT position as pos
+		return this.prisma.$transaction(async (tx) => {
+			const posRes = await tx.$queryRaw<{ pos: number }[]>`
+				SELECT position AS pos
 				FROM rectors
-				WHERE CAST(SPLIT_PART(years, '—', 1) AS INTEGER) > $1
+				WHERE CAST(SPLIT_PART(years, '—', 1) AS INTEGER) > ${newYear}
 				ORDER BY position ASC
 				LIMIT 1
-			`,
-				[newYear],
-			);
+			`;
 
 			let insertPos: number;
-
-			if (posRes.rows.length > 0) {
-				insertPos = posRes.rows[0].pos;
+			if (posRes.length > 0) {
+				insertPos = posRes[0].pos;
 			} else {
-				const countRes = await client.query<{ count: string }>(
-					'SELECT COUNT(*) FROM rectors',
-				);
-				insertPos = Number(countRes.rows[0].count) + 1;
+				const count = await tx.rectors.count();
+				insertPos = count + 1;
 			}
 
-			// 🔥 безопасный сдвиг (без конфликта уникальности)
-			await client.query(
-				'UPDATE rectors SET position = position + 100000 WHERE position >= $1',
-				[insertPos],
-			);
+			await tx.$executeRaw`
+				UPDATE rectors SET position = position + 100000 WHERE position >= ${insertPos}
+			`;
+			await tx.$executeRaw`
+				UPDATE rectors SET position = position - 99999 WHERE position >= ${insertPos} + 100000
+			`;
 
-			await client.query(
-				'UPDATE rectors SET position = position - 99999 WHERE position >= $1 + 100000',
-				[insertPos],
-			);
-
-			// вставляем
-			const result = await client.query<RectorRow>(
-				`INSERT INTO rectors
-					(position, name, years, description, full_text, img, images, files)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-				RETURNING *`,
-				[
-					insertPos,
+			const row = await tx.rectors.create({
+				data: {
+					position: insertPos,
 					name,
 					years,
 					description,
 					full_text,
 					img,
-					cleanImages,
-					JSON.stringify(cleanFiles),
-				],
-			);
+					images: cleanImages,
+					files: cleanFiles as Prisma.InputJsonValue,
+				},
+			});
 
-			await client.query('COMMIT');
-			return result.rows[0];
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+			return rowToRector(row);
+		});
 	}
 
-	// Обновить ректора по id.
-	// COALESCE — не трогаем поля которые не были переданы в теле запроса.
 	async update(id: number, data: RectorInput): Promise<RectorRow | null> {
 		const { name, years, description, full_text, img, images, files, position } = data;
 
-		// Фильтруем пустые строки только если массив вообще был передан
 		const cleanImages = images?.filter((s) => s.trim() !== '');
 		const cleanFiles = files?.filter((f) => f.name.trim() !== '' || f.url.trim() !== '');
 
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
+		return this.prisma.$transaction(async (tx) => {
+			const existing = await tx.rectors.findUnique({ where: { id } });
+			if (!existing) return null;
 
-			const existing = await client.query<RectorRow>('SELECT * FROM rectors WHERE id = $1', [
-				id,
-			]);
-			if (existing.rows.length === 0) return null;
-
-			const current = existing.rows[0];
-
-			// Если позиция изменилась — переставляем запись
-			if (position !== undefined && Number(position) !== current.position) {
-				const countRes = await client.query<{ count: string }>(
-					'SELECT COUNT(*) FROM rectors',
-				);
-				const count = Number(countRes.rows[0].count);
+			if (position !== undefined && Number(position) !== existing.position) {
+				const count = await tx.rectors.count();
 				const targetPos = Math.max(1, Math.min(Number(position), count));
-				const currentPos: number = current.position;
+				const currentPos = existing.position;
 
-				// Временно убираем из очереди чтобы не было конфликта уникальности
-				await client.query('UPDATE rectors SET position = 0 WHERE id = $1', [id]);
+				await tx.rectors.update({ where: { id }, data: { position: 0 } });
 
 				if (targetPos > currentPos) {
-					await client.query(
-						`UPDATE rectors SET position = position - 1
-                        WHERE position > $1 AND position <= $2`,
-						[currentPos, targetPos],
-					);
+					await tx.$executeRaw`
+						UPDATE rectors SET position = position - 1
+						WHERE position > ${currentPos} AND position <= ${targetPos}
+					`;
 				} else {
-					await client.query(
-						`UPDATE rectors SET position = position + 1
-                        WHERE position >= $1 AND position < $2`,
-						[targetPos, currentPos],
-					);
+					await tx.$executeRaw`
+						UPDATE rectors SET position = position + 1
+						WHERE position >= ${targetPos} AND position < ${currentPos}
+					`;
 				}
 
-				await client.query('UPDATE rectors SET position = $1 WHERE id = $2', [
-					targetPos,
-					id,
-				]);
+				await tx.rectors.update({
+					where: { id },
+					data: { position: targetPos },
+				});
 			}
 
-			const updated = await client.query<RectorRow>(
-				`UPDATE rectors SET
-                    name        = COALESCE($1, name),
-                    years       = COALESCE($2, years),
-                    description = COALESCE($3, description),
-                    full_text   = COALESCE($4, full_text),
-                    img         = COALESCE($5, img),
-                    images      = COALESCE($6, images),
-                    files       = COALESCE($7, files)
-                WHERE id = $8
-                RETURNING *`,
-				[
-					name ?? null,
-					years ?? null,
-					description ?? null,
-					full_text ?? null,
-					img ?? null,
-					cleanImages ?? null,
-					cleanFiles !== undefined ? JSON.stringify(cleanFiles) : null,
-					id,
-				],
-			);
+			const updated = await tx.rectors.update({
+				where: { id },
+				data: {
+					name: name ?? undefined,
+					years: years ?? undefined,
+					description: description ?? undefined,
+					full_text: full_text ?? undefined,
+					img: img ?? undefined,
+					images: cleanImages ?? undefined,
+					files:
+						cleanFiles !== undefined
+							? (cleanFiles as Prisma.InputJsonValue)
+							: undefined,
+				},
+			});
 
-			await client.query('COMMIT');
-			return updated.rows[0] ?? null;
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+			return rowToRector(updated);
+		});
 	}
 
-	// Удалить ректора по id и сдвинуть позиции
 	async delete(id: number): Promise<boolean> {
-		const client = await this.db.connect();
-		try {
-			await client.query('BEGIN');
+		return this.prisma.$transaction(async (tx) => {
+			const row = await tx.rectors.findUnique({ where: { id } });
+			if (!row) return false;
 
-			const result = await client.query<RectorRow>(
-				'DELETE FROM rectors WHERE id = $1 RETURNING *',
-				[id],
-			);
-			if (result.rows.length === 0) {
-				await client.query('ROLLBACK');
-				return false;
-			}
-
-			const deletedPos: number = result.rows[0].position;
-			await client.query('UPDATE rectors SET position = position - 1 WHERE position > $1', [
-				deletedPos,
-			]);
-
-			await client.query('COMMIT');
+			await tx.rectors.delete({ where: { id } });
+			await tx.$executeRaw`
+				UPDATE rectors SET position = position - 1 WHERE position > ${row.position}
+			`;
 			return true;
-		} catch (err) {
-			await client.query('ROLLBACK');
-			throw err;
-		} finally {
-			client.release();
-		}
+		});
 	}
 }

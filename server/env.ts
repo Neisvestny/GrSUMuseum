@@ -8,7 +8,7 @@ export const env = {
 	HOST: get('HOST').default('localhost').asString(),
 	PORT: get('PORT').default('3000').asPortNumber(),
 	CORS_ORIGIN: get('CORS_ORIGIN')
-		.default('http://localhost:5173')
+		.default('http://localhost:5173,http://localhost:5174,http://localhost:5175')
 		.asString()
 		.split(',')
 		.map((origin) => origin.trim())

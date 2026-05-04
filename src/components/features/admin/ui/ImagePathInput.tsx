@@ -12,7 +12,6 @@ function normalizeLocalValue(raw: string) {
 	const v = raw.trim();
 	if (!v) return { display: '', stored: '' };
 	if (isExternalUrl(v)) return { display: v, stored: v };
-	// пользователь может вставить "/images/x.jpg" или "images/x.jpg" — нормализуем к имени файла
 	const cleaned = v.replace(/^\/?images\//i, '').replace(/^\//, '');
 	return { display: cleaned, stored: `/images/${cleaned}` };
 }

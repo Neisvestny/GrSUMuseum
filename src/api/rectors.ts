@@ -38,7 +38,6 @@ export async function deleteRector(id: number): Promise<void> {
 	await apiRequest<void>(`/rectors/${id}`, { method: 'DELETE' });
 }
 
-// Убираем пустые строки из массивов перед отправкой на сервер
 function sanitize(data: Partial<Rector>): Partial<Rector> {
 	return {
 		...data,

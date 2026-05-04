@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import { appRoutes } from './app/routes';
-import ScreenSaver from './components/ScreenSaver.tsx';
 import './index.css';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
 
 export default function App() {
-	const [isIdle, setIsIdle] = useState(false);
+	const [_isIdle, setIsIdle] = useState(false);
 
 	const resetTimer = useCallback(() => {
 		setIsIdle(false);
@@ -70,7 +69,7 @@ export default function App() {
 
 	return (
 		<>
-			{isIdle && <ScreenSaver onDismiss={resetTimer} />}
+			{/* {isIdle && <ScreenSaver onDismiss={resetTimer} />} */}
 			<Routes>
 				{appRoutes.map((route) => (
 					<Route key={route.path} path={route.path} element={route.element} />

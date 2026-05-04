@@ -1,11 +1,12 @@
 import SectionMenuPage from '../../components/patterns/SectionMenuPage';
-
-const BUTTONS = [
-	{ label: 'История развития ГрГУ', path: '/history/development' },
-	{ label: 'Ректоры ГрГУ', path: '/history/rectors' },
-	{ label: 'Купаловцы помнят', path: '/history/memory' },
-];
+import { useMenuSection } from '../../hooks/cms/useMenuSection';
 
 export default function History() {
-	return <SectionMenuPage title="История ГрГУ" items={BUTTONS} />;
+	const { items } = useMenuSection('history');
+	return (
+		<SectionMenuPage
+			title="История ГрГУ"
+			items={items.map((item) => ({ label: item.label, path: item.path }))}
+		/>
+	);
 }

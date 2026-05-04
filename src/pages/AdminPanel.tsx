@@ -2,6 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Rector } from '../api/rectors';
+import MenuPanel from '../components/features/admin/menu/MenuPanel';
+import PagesPanel from '../components/features/admin/pages/PagesPanel';
 import { EMPTY_RECTOR } from '../components/features/admin/rectors/constants';
 import RectorCard from '../components/features/admin/rectors/RectorCard';
 import RectorForm from '../components/features/admin/rectors/RectorForm';
@@ -10,9 +12,6 @@ import AdminButton from '../components/features/admin/ui/AdminButton';
 import { ErrorBox } from '../components/features/admin/ui/ErrorBox';
 import { useRectors } from '../hooks/useRectors';
 
-// ═══════════════════════════════════════════════════════════════
-// РЕЕСТР СЕКЦИЙ — добавляй сюда новые разделы
-// ═══════════════════════════════════════════════════════════════
 const SECTIONS = [
 	{ id: 'teachers-vov', label: 'Купаловцы помнят', sub: 'ВОВ', icon: '🎖️' },
 	{
@@ -40,13 +39,12 @@ const SECTIONS = [
 		icon: '🏋️',
 	},
 	{ id: 'rectors', label: 'Ректоры ГрГУ', sub: '', icon: '🎓' },
-	// { id: 'news', label: 'Новости', sub: '', icon: '📰' }, ← просто раскомментируй и добавь панель
+	{ id: 'pages-cms', label: 'CMS страницы', sub: 'Табы, блоки, абзацы', icon: '🧩' },
+	{ id: 'menu-cms', label: 'Меню разделов', sub: 'Навигация', icon: '🧭' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
 
-// ПАНЕЛЬ: РЕКТОРЫ
-// ═══════════════════════════════════════════════════════════════
 function RectorsPanel() {
 	const { rectors, loading, error, add, update, remove, reload } = useRectors();
 	const [adding, setAdding] = useState(false);
@@ -114,10 +112,6 @@ function RectorsPanel() {
 				<AnimatePresence>
 					{rectors.map((r) => (
 						<RectorCard
-							// Важно: если на бэке `id`/позиции могут пересчитываться после удаления,
-							// key по `id` даст React шанс переиспользовать карточку для другой записи,
-							// и локальный UI-state ("Удалить? Да/Нет") может "переехать".
-							// Делаем key стабильным по содержимому записи, а не по позиции/порядку.
 							key={`rector:${r.name}:${r.years}:${r.img}:${r.description}:${r.full_text}`}
 							rector={r}
 							onUpdate={update}
@@ -136,9 +130,6 @@ function RectorsPanel() {
 	);
 }
 
-// ═══════════════════════════════════════════════════════════════
-// РОУТЕР ПАНЕЛЕЙ — добавляй новые секции сюда
-// ═══════════════════════════════════════════════════════════════
 function PanelRouter({ sectionId }: { sectionId: SectionId }) {
 	switch (sectionId) {
 		case 'teachers-vov':
@@ -153,22 +144,22 @@ function PanelRouter({ sectionId }: { sectionId: SectionId }) {
 			return <TeachersPanel section="trainer" />;
 		case 'rectors':
 			return <RectorsPanel />;
-		// case 'news':        return <NewsPanel />;
+		case 'pages-cms':
+			return <PagesPanel />;
+		case 'menu-cms':
+			return <MenuPanel />;
 		default:
 			return null;
 	}
 }
 
-// ═══════════════════════════════════════════════════════════════
-// ГЛАВНЫЙ КОМПОНЕНТ
-// ═══════════════════════════════════════════════════════════════
 export default function AdminPanel() {
 	const navigate = useNavigate();
 	const [activeId, setActiveId] = useState<SectionId>(SECTIONS[0].id);
 
 	return (
 		<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex overflow-hidden">
-			{/* ── Боковая панель (сайдбар) ── */}
+			{/* Боковая панель (сайдбар) */}
 			<aside className="w-64 shrink-0 h-full flex flex-col bg-white/80 backdrop-blur-md border-r border-blue-100 z-10">
 				<div className="px-6 py-5 border-b border-blue-100">
 					<button
@@ -235,7 +226,7 @@ export default function AdminPanel() {
 				</nav>
 			</aside>
 
-			{/* ── Основная область ── */}
+			{/* Основная область */}
 			<main className="flex-1 flex flex-col overflow-hidden">
 				{/* Хедер */}
 				<header className="px-8 py-4 bg-white/60 backdrop-blur-md border-b border-blue-100 shrink-0 flex items-center gap-4">

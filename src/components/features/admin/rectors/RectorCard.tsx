@@ -19,8 +19,6 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState<string | null>(null);
 
-	// Если после удаления/пересортировки React переиспользовал компонент карточки
-	// для другого ректора (изменился rector.id), сбрасываем локальный UI-state.
 	useEffect(() => {
 		setEditing(false);
 		setConfirmDelete(false);

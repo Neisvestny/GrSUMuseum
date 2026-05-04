@@ -125,10 +125,6 @@ export default function TeachersPanel({ section }: Props) {
 				<AnimatePresence>
 					{teachers.map((t) => (
 						<TeacherCard
-							// В этой модели `id` фактически = позиция и может "съезжать" после удаления.
-							// Поэтому key должен быть стабильным по "идентичности" записи, а не по позиции.
-							// Не включаем `t.id`, иначе при удалении соседние карточки будут перемонтироваться
-							// и из-за initial-анимации может быть визуальный "рывок".
 							key={`${section}:${t.name}:${t.role}:${t.img}:${t.desc}`}
 							teacher={t}
 							section={section}

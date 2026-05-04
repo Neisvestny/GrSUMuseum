@@ -7,13 +7,10 @@
 
   "files.eol": "\n",
 
-  // Prettier
   "prettier.requireConfig": true,
 
-  // Отключить встроенный formatter
   "js/ts.format.enabled": false,
 
-  // Явно указываем Prettier
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
@@ -30,7 +27,6 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
 
-  // Импорты
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   }

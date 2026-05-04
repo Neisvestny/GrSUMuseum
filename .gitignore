@@ -27,6 +27,9 @@ temp
 # =========================
 node_modules/
 
+# Prisma Client (regenerate with `npx prisma generate`)
+server/generated/
+
 # =========================
 # Build output
 # =========================
@@ -85,3 +88,4 @@ Thumbs.db
 .envrc
 .vercel
 .netlify
+/src/generated/prisma

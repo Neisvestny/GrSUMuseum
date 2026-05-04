@@ -1,6 +1,3 @@
-// Контроллер — только HTTP-логика: валидация, вызов сервиса, ответ.
-// Никакого SQL и бизнес-логики здесь быть не должно.
-
 import type { NextFunction, Request, Response } from 'express';
 import type { RectorsService } from '../services/rectors.service';
 import { HttpError } from '../shared/errors';
