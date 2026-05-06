@@ -32,6 +32,25 @@ export class PagesController {
 		}
 	};
 
+	getPageByPath = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+		const raw = req.query.path;
+		const path = (typeof raw === 'string' ? raw : '').trim();
+		if (!path) {
+			next(new HttpError(400, 'path обязателен'));
+			return;
+		}
+		try {
+			const page = await this.service.getPageByPath(path);
+			if (!page) {
+				next(new HttpError(404, 'Страница не найдена'));
+				return;
+			}
+			res.json(page);
+		} catch (err) {
+			next(err);
+		}
+	};
+
 	getPageById = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 		const id = Number(req.params.id);
 		if (!Number.isFinite(id)) {

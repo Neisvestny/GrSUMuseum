@@ -24,6 +24,7 @@ import {
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -31,6 +32,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 export default function PagesPanel() {
+	const toast = useAdminToast();
 	const [pages, setPages] = useState<PageSummary[]>([]);
 	const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
 	const [selectedPage, setSelectedPage] = useState<PageDto | null>(null);
@@ -58,7 +60,9 @@ export default function PagesPanel() {
 					: list[0].id;
 			setSelectedPageId(nextId);
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось загрузить список страниц'));
+			const msg = errorMessage(error, 'Не удалось загрузить список страниц');
+			setError(msg);
+			toast.error(msg);
 		} finally {
 			setLoading(false);
 		}
@@ -69,7 +73,9 @@ export default function PagesPanel() {
 			setError(null);
 			setSelectedPage(await fetchPageById(pageId));
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось загрузить данные страницы'));
+			const msg = errorMessage(error, 'Не удалось загрузить данные страницы');
+			setError(msg);
+			toast.error(msg);
 			setSelectedPage(null);
 		}
 	};
@@ -110,8 +116,9 @@ export default function PagesPanel() {
 			setCreating(false);
 			await loadPages();
 			setSelectedPageId(page.id);
+			toast.success('Страница создана');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось создать страницу'));
+			toast.error(errorMessage(error, 'Не удалось создать страницу'));
 		}
 	};
 
@@ -123,8 +130,9 @@ export default function PagesPanel() {
 			await updatePage(id, data);
 			await loadPages();
 			await loadPage(id);
+			toast.success('Страница сохранена');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось сохранить страницу'));
+			toast.error(errorMessage(error, 'Не удалось сохранить страницу'));
 		}
 	};
 
@@ -132,8 +140,9 @@ export default function PagesPanel() {
 		try {
 			await deletePage(id);
 			await loadPages();
+			toast.success('Страница удалена');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось удалить страницу'));
+			toast.error(errorMessage(error, 'Не удалось удалить страницу'));
 		}
 	};
 
@@ -142,8 +151,9 @@ export default function PagesPanel() {
 		try {
 			await createTab(selectedPageId, { label: 'Новая вкладка' });
 			await loadPage(selectedPageId);
+			toast.success('Вкладка добавлена');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось добавить вкладку'));
+			toast.error(errorMessage(error, 'Не удалось добавить вкладку'));
 		}
 	};
 
@@ -152,8 +162,9 @@ export default function PagesPanel() {
 		try {
 			await updateTab(tabId, data);
 			await loadPage(selectedPageId);
+			toast.success('Вкладка сохранена');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось сохранить вкладку'));
+			toast.error(errorMessage(error, 'Не удалось сохранить вкладку'));
 		}
 	};
 
@@ -162,8 +173,9 @@ export default function PagesPanel() {
 		try {
 			await deleteTab(tabId);
 			await loadPage(selectedPageId);
+			toast.success('Вкладка удалена');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось удалить вкладку'));
+			toast.error(errorMessage(error, 'Не удалось удалить вкладку'));
 		}
 	};
 
@@ -172,8 +184,9 @@ export default function PagesPanel() {
 		try {
 			await createBlock({ page_id: selectedPageId, img: '' });
 			await loadPage(selectedPageId);
+			toast.success('Блок добавлен');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось добавить блок страницы'));
+			toast.error(errorMessage(error, 'Не удалось добавить блок страницы'));
 		}
 	};
 
@@ -182,8 +195,9 @@ export default function PagesPanel() {
 		try {
 			await createBlock({ tab_id: tabId, img: '' });
 			await loadPage(selectedPageId);
+			toast.success('Блок во вкладку добавлен');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось добавить блок вкладки'));
+			toast.error(errorMessage(error, 'Не удалось добавить блок вкладки'));
 		}
 	};
 
@@ -202,8 +216,9 @@ export default function PagesPanel() {
 		try {
 			await deleteBlock(blockId);
 			await loadPage(selectedPageId);
+			toast.success('Блок удалён');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось удалить блок'));
+			toast.error(errorMessage(error, 'Не удалось удалить блок'));
 		}
 	};
 
@@ -212,8 +227,9 @@ export default function PagesPanel() {
 		try {
 			await createParagraph(blockId, { text: 'Новый абзац' });
 			await loadPage(selectedPageId);
+			toast.success('Абзац добавлен');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось добавить абзац'));
+			toast.error(errorMessage(error, 'Не удалось добавить абзац'));
 		}
 	};
 
@@ -225,8 +241,9 @@ export default function PagesPanel() {
 		try {
 			await updateParagraph(paragraphId, data);
 			await loadPage(selectedPageId);
+			toast.success('Абзац сохранён');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось сохранить абзац'));
+			toast.error(errorMessage(error, 'Не удалось сохранить абзац'));
 		}
 	};
 
@@ -235,8 +252,9 @@ export default function PagesPanel() {
 		try {
 			await deleteParagraph(paragraphId);
 			await loadPage(selectedPageId);
+			toast.success('Абзац удалён');
 		} catch (error) {
-			setError(errorMessage(error, 'Не удалось удалить абзац'));
+			toast.error(errorMessage(error, 'Не удалось удалить абзац'));
 		}
 	};
 
@@ -253,7 +271,7 @@ export default function PagesPanel() {
 					<div className="mb-3 flex flex-col gap-2">
 						<input
 							className={adminInputClass}
-							placeholder="slug: hall-of-fame"
+							placeholder="slug: history/memory/vov"
 							value={newPageSlug}
 							onChange={(e) => setNewPageSlug(e.target.value)}
 						/>

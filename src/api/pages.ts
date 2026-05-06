@@ -80,6 +80,10 @@ export async function fetchPageBySlug(slug: string): Promise<PageDto> {
 	return apiRequest<PageDto>(`/pages/by-slug/${encodeURIComponent(slug)}`);
 }
 
+export async function fetchPageByPath(path: string): Promise<PageDto> {
+	return apiRequest<PageDto>(`/pages/by-path?path=${encodeURIComponent(path)}`);
+}
+
 export async function fetchPageById(id: number): Promise<PageDto> {
 	return apiRequest<PageDto>(`/pages/${id}`);
 }

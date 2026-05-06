@@ -9,9 +9,11 @@ import {
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 
 export default function MenuPanel() {
+	const toast = useAdminToast();
 	const [items, setItems] = useState<MenuItem[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [section, setSection] = useState('home');
@@ -23,7 +25,9 @@ export default function MenuPanel() {
 			setError(null);
 			setItems(await fetchAllMenuItems());
 		} catch (error) {
-			setError(error instanceof ApiError ? error.message : 'Не удалось загрузить меню');
+			const msg = error instanceof ApiError ? error.message : 'Не удалось загрузить меню';
+			setError(msg);
+			toast.error(msg);
 		}
 	};
 
@@ -52,7 +56,9 @@ export default function MenuPanel() {
 	const add = async () => {
 		const normalizedSection = section.trim();
 		if (!normalizedSection) {
-			setError('Укажи section slug (например: science)');
+			const msg = 'Укажите секцию (slug), например: science';
+			setError(msg);
+			toast.error(msg);
 			return;
 		}
 		try {
@@ -61,8 +67,11 @@ export default function MenuPanel() {
 			setPath('');
 			setSection(normalizedSection);
 			await load();
+			toast.success('Пункт меню добавлен');
 		} catch (error) {
-			setError(error instanceof ApiError ? error.message : 'Не удалось создать пункт меню');
+			const msg = error instanceof ApiError ? error.message : 'Не удалось создать пункт меню';
+			setError(msg);
+			toast.error(msg);
 		}
 	};
 
@@ -70,8 +79,11 @@ export default function MenuPanel() {
 		try {
 			await updateMenuItem(id, data);
 			await load();
+			toast.success('Сохранено');
 		} catch (error) {
-			setError(error instanceof ApiError ? error.message : 'Не удалось сохранить пункт меню');
+			const msg = error instanceof ApiError ? error.message : 'Не удалось сохранить пункт меню';
+			setError(msg);
+			toast.error(msg);
 		}
 	};
 
@@ -79,8 +91,11 @@ export default function MenuPanel() {
 		try {
 			await deleteMenuItem(id);
 			await load();
+			toast.success('Пункт удалён');
 		} catch (error) {
-			setError(error instanceof ApiError ? error.message : 'Не удалось удалить пункт меню');
+			const msg = error instanceof ApiError ? error.message : 'Не удалось удалить пункт меню';
+			setError(msg);
+			toast.error(msg);
 		}
 	};
 

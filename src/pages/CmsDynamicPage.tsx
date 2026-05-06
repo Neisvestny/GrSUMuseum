@@ -1,20 +1,20 @@
 import { useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import CmsPageContent from '../components/patterns/CmsPageContent';
-import { usePageBySlug } from '../hooks/cms/usePageBySlug';
+import { usePageByPath } from '../hooks/cms/usePageBySlug';
 import MainLayout from '../layouts/MainLayout';
 
-function slugFromPath(pathname: string): string {
-	const normalized = pathname.replace(/\/+$/, '');
-	const parts = normalized.split('/').filter(Boolean);
-	if (parts.length === 0) return '';
-	return parts[parts.length - 1];
+function pathFromLocation(pathname: string): string {
+	return pathname
+		.trim()
+		.replace(/^\/+|\/+$/g, '')
+		.replace(/\/{2,}/g, '/');
 }
 
 export default function CmsDynamicPage() {
 	const location = useLocation();
-	const slug = useMemo(() => slugFromPath(location.pathname), [location.pathname]);
-	const { page, loading, error } = usePageBySlug(slug);
+	const path = useMemo(() => pathFromLocation(location.pathname), [location.pathname]);
+	const { page, loading, error } = usePageByPath(path);
 
 	const title = page?.title || 'Страница';
 

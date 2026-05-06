@@ -41,7 +41,10 @@ function NavButton({
 }) {
 	return (
 		<button
-			onClick={() => navigate(btn.path)}
+			onClick={() => {
+				const target = btn.path.startsWith('/') ? btn.path : `/${btn.path}`;
+				navigate(target);
+			}}
 			className="
 				w-80 h-36
 				rounded-2xl border-2 border-blue-200

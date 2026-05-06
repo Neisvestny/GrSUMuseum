@@ -45,6 +45,13 @@ function toPageRow(row: { id: number; slug: string; title: string; template: str
 export class PagesService {
 	constructor(private prisma: PrismaClient) {}
 
+	private normalizePath(raw: string): string {
+		return raw
+			.trim()
+			.replace(/^\/+|\/+$/g, '')
+			.replace(/\/{2,}/g, '/');
+	}
+
 	async listPages(): Promise<PageRow[]> {
 		const rows = await this.prisma.pages.findMany({
 			orderBy: { id: 'asc' },
@@ -55,7 +62,18 @@ export class PagesService {
 
 	async getPageBySlug(slug: string): Promise<PageDto | null> {
 		const page = await this.prisma.pages.findUnique({
-			where: { slug },
+			where: { slug: this.normalizePath(slug) },
+			select: { id: true, slug: true, title: true, template: true },
+		});
+		if (!page) return null;
+		return this.assemblePage(toPageRow(page));
+	}
+
+	async getPageByPath(path: string): Promise<PageDto | null> {
+		const normalized = this.normalizePath(path);
+		if (!normalized) return null;
+		const page = await this.prisma.pages.findUnique({
+			where: { slug: normalized },
 			select: { id: true, slug: true, title: true, template: true },
 		});
 		if (!page) return null;
@@ -141,7 +159,7 @@ export class PagesService {
 	}
 
 	async createPage(data: PageInput): Promise<PageRow> {
-		const slug = (data.slug ?? '').trim();
+		const slug = this.normalizePath(data.slug ?? '');
 		const title = (data.title ?? '').trim();
 		if (!slug) throw new HttpError(400, 'slug обязателен');
 		if (!title) throw new HttpError(400, 'title обязателен');
@@ -168,11 +186,12 @@ export class PagesService {
 	}
 
 	async updatePage(id: number, data: PageInput): Promise<PageRow | null> {
+		const normalizedSlug = data.slug === undefined ? undefined : this.normalizePath(data.slug);
 		try {
 			const row = await this.prisma.pages.update({
 				where: { id },
 				data: {
-					slug: data.slug ?? undefined,
+					slug: normalizedSlug,
 					title: data.title ?? undefined,
 					template: data.template ?? undefined,
 				},
@@ -182,7 +201,7 @@ export class PagesService {
 		} catch (err) {
 			if (isRecordNotFound(err)) return null;
 			if (isUniqueViolation(err)) {
-				throw new HttpError(409, `Страница со slug "${data.slug}" уже существует`);
+				throw new HttpError(409, `Страница со slug "${normalizedSlug}" уже существует`);
 			}
 			if (isTemplateConstraintViolation(err)) {
 				throw new HttpError(400, 'Некорректный template для страницы');

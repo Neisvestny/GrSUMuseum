@@ -26,7 +26,11 @@ export default function SectionMenuPage({ title, items }: Props) {
 					{items.map((item) => (
 						<Button
 							key={`${item.path}-${item.label}`}
-							onClick={() => item.path && navigate(item.path)}
+							onClick={() => {
+								if (!item.path) return;
+								const target = item.path.startsWith('/') ? item.path : `/${item.path}`;
+								navigate(target);
+							}}
 							disabled={item.disabled || !item.path}
 							size="lg"
 							className="w-full h-36 flex items-center justify-center text-2xl text-center px-4"

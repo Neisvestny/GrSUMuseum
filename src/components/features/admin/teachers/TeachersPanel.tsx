@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TeacherMutation, TeacherSection } from '../../../../api/teachers';
 import { useTeachers } from '../../../../hooks/useTeachers';
 import AdminButton from '../ui/AdminButton';
+import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 import TeacherCard from './TeacherCard';
 import TeacherForm from './TeacherForm';
@@ -10,6 +11,7 @@ import TeacherForm from './TeacherForm';
 type Props = { section: TeacherSection };
 
 export default function TeachersPanel({ section }: Props) {
+	const toast = useAdminToast();
 	const { teachers, loading, error, add, reset, reload } = useTeachers(section);
 	const [adding, setAdding] = useState(false);
 	const [confirmReset, setConfirmReset] = useState(false);
@@ -22,8 +24,11 @@ export default function TeachersPanel({ section }: Props) {
 		try {
 			await add(data);
 			setAdding(false);
+			toast.success('Преподаватель добавлен');
 		} catch (error) {
-			setAddErr(error instanceof Error ? error.message : 'Ошибка');
+			const msg = error instanceof Error ? error.message : 'Ошибка';
+			setAddErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}
@@ -31,10 +36,20 @@ export default function TeachersPanel({ section }: Props) {
 
 	const handleReset = async () => {
 		setBusy(true);
-		await reset();
-		setConfirmReset(false);
-		setBusy(false);
+		try {
+			await reset();
+			setConfirmReset(false);
+			toast.success('Список сброшен к исходным данным');
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Не удалось сбросить список');
+		} finally {
+			setBusy(false);
+		}
 	};
+
+	useEffect(() => {
+		if (error) toast.error(error);
+	}, [error, toast]);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -54,7 +69,12 @@ export default function TeachersPanel({ section }: Props) {
 				<AdminButton
 					onClick={() => {
 						setBusy(true);
-						add({}).finally(() => setBusy(false));
+						add({})
+							.then(() => toast.success('Добавлен пустой преподаватель'))
+							.catch((err) =>
+								toast.error(err instanceof Error ? err.message : 'Не удалось добавить'),
+							)
+							.finally(() => setBusy(false));
 					}}
 					disabled={busy}
 					variant="secondary"

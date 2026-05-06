@@ -14,6 +14,7 @@ export const pagesRouter = Router();
 // pages
 pagesRouter.get('/', controller.listPages);
 pagesRouter.get('/by-slug/:slug', controller.getPageBySlug);
+pagesRouter.get('/by-path', controller.getPageByPath);
 pagesRouter.get('/:id', controller.getPageById);
 pagesRouter.post('/', controller.createPage);
 pagesRouter.put('/:id', controller.updatePage);

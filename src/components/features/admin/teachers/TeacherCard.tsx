@@ -4,6 +4,7 @@ import type { Teacher, TeacherMutation, TeacherSection } from '../../../../api/t
 import { useTeachers } from '../../../../hooks/useTeachers';
 import AdminButton from '../ui/AdminButton';
 import { ConfirmDelete } from '../ui/ConfirmDelete';
+import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 import TeacherForm from './TeacherForm';
 
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export default function TeacherCard({ teacher, section, maxId, onChanged }: Props) {
+	const toast = useAdminToast();
 	const { update, remove } = useTeachers(section);
 	const [editing, setEditing] = useState(false);
 	const [confirmDel, setConfirmDel] = useState(false);
@@ -34,8 +36,11 @@ export default function TeacherCard({ teacher, section, maxId, onChanged }: Prop
 			await update(teacher.id, data);
 			setEditing(false);
 			onChanged();
+			toast.success('Сохранено');
 		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка');
+			const msg = error instanceof Error ? error.message : 'Ошибка';
+			setErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}
@@ -46,8 +51,11 @@ export default function TeacherCard({ teacher, section, maxId, onChanged }: Prop
 		try {
 			await remove(teacher.id);
 			onChanged();
+			toast.success('Удалено');
 		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка удаления');
+			const msg = error instanceof Error ? error.message : 'Ошибка удаления';
+			setErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}

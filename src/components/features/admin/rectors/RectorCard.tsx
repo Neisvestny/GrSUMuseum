@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { Rector } from '../../../../api/rectors';
 import AdminButton from '../ui/AdminButton';
 import { ConfirmDelete } from '../ui/ConfirmDelete';
+import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 import RectorForm from './RectorForm';
 
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Props) {
+	const toast = useAdminToast();
 	const [editing, setEditing] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(false);
 	const [busy, setBusy] = useState(false);
@@ -32,8 +34,11 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 			await onUpdate(rector.id, data);
 			setEditing(false);
 			onChanged?.();
+			toast.success('Сохранено');
 		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка');
+			const msg = error instanceof Error ? error.message : 'Ошибка';
+			setErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}
@@ -44,8 +49,11 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 		try {
 			await onDelete(rector.id);
 			onChanged?.();
+			toast.success('Удалено');
 		} catch (error) {
-			setErr(error instanceof Error ? error.message : 'Ошибка удаления');
+			const msg = error instanceof Error ? error.message : 'Ошибка удаления';
+			setErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}

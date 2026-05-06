@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Rector } from '../api/rectors';
 import MenuPanel from '../components/features/admin/menu/MenuPanel';
@@ -9,6 +9,7 @@ import RectorCard from '../components/features/admin/rectors/RectorCard';
 import RectorForm from '../components/features/admin/rectors/RectorForm';
 import TeachersPanel from '../components/features/admin/teachers/TeachersPanel';
 import AdminButton from '../components/features/admin/ui/AdminButton';
+import { AdminToastProvider, useAdminToast } from '../components/features/admin/ui/AdminToastContext';
 import { ErrorBox } from '../components/features/admin/ui/ErrorBox';
 import { useRectors } from '../hooks/useRectors';
 
@@ -46,10 +47,15 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]['id'];
 
 function RectorsPanel() {
+	const toast = useAdminToast();
 	const { rectors, loading, error, add, update, remove, reload } = useRectors();
 	const [adding, setAdding] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [addErr, setAddErr] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (error) toast.error(error);
+	}, [error, toast]);
 
 	const handleAdd = async (data: Partial<Rector>) => {
 		setBusy(true);
@@ -57,8 +63,11 @@ function RectorsPanel() {
 		try {
 			await add(data);
 			setAdding(false);
+			toast.success('Ректор добавлен');
 		} catch (error) {
-			setAddErr(error instanceof Error ? error.message : 'Ошибка');
+			const msg = error instanceof Error ? error.message : 'Ошибка';
+			setAddErr(msg);
+			toast.error(msg);
 		} finally {
 			setBusy(false);
 		}
@@ -158,6 +167,7 @@ export default function AdminPanel() {
 	const [activeId, setActiveId] = useState<SectionId>(SECTIONS[0].id);
 
 	return (
+		<AdminToastProvider>
 		<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex overflow-hidden">
 			{/* Боковая панель (сайдбар) */}
 			<aside className="w-64 shrink-0 h-full flex flex-col bg-white/80 backdrop-blur-md border-r border-blue-100 z-10">
@@ -262,5 +272,6 @@ export default function AdminPanel() {
 				</div>
 			</main>
 		</div>
+		</AdminToastProvider>
 	);
 }

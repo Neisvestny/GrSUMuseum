@@ -1,8 +1,9 @@
 import type { ReactElement } from 'react';
 import AdminPanel from '../pages/AdminPanel';
-import CmsDynamicPage from '../pages/CmsDynamicPage';
-import DynamicSectionMenuPage from '../pages/DynamicSectionMenuPage';
 import Home from '../pages/Home';
+import PathResolverPage from '../pages/PathResolverPage';
+import RectorDetails from '../pages/RectorDetails';
+import Rectors from '../pages/history/Rectors';
 
 export type AppRoute = {
 	path: string;
@@ -14,8 +15,8 @@ export const appRoutes: AppRoute[] = [
 	{ path: '/', element: <Home /> },
 	// { path: '/history', element: <History /> },
 	// { path: '/history/development', element: <TeachersInstitute /> },
-	// { path: '/history/rectors', element: <Rectors /> },
-	// { path: '/history/rectors/:id', element: <RectorDetails /> },
+	{ path: '/rectors', element: <Rectors /> },
+	{ path: 'history/rectors/:id', element: <RectorDetails /> },
 	// { path: '/history/memory', element: <Memory /> },
 	// { path: '/history/memory/afgan', element: <MemoryAfgan /> },
 	// { path: '/history/memory/vov', element: <MemoryVov /> },
@@ -29,6 +30,5 @@ export const appRoutes: AppRoute[] = [
 	// { path: '/studentlife/students-work-teams', element: <StudentsWorkTeams /> },
 	// { path: '/studentlife/social-life', element: <SocialLife /> },
 	// { path: '/studentlife/student-initiatives', element: <StudentInitiatives /> },
-	{ path: '/:section', element: <DynamicSectionMenuPage /> },
-	{ path: '*', element: <CmsDynamicPage /> },
+	{ path: '*', element: <PathResolverPage /> },
 ];
