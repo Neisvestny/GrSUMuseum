@@ -20,6 +20,14 @@ export const PAGE_TEMPLATES: Array<{ value: PageTemplate; label: string }> = [
 	{ value: 'tabs_text_image', label: 'Табы + текст/изображение' },
 ];
 
+/** Шаблон только контента (без режима «с табами»). Для вкладки/блока: null = как у страницы по умолчанию. */
+export type ContentTemplate = 'alternating_blocks' | 'text_image';
+
+export const CONTENT_TEMPLATES: Array<{ value: ContentTemplate; label: string }> = [
+	{ value: 'alternating_blocks', label: 'Чередующиеся блоки' },
+	{ value: 'text_image', label: 'Текст + изображение' },
+];
+
 export interface PageParagraph {
 	id: number;
 	position: number;
@@ -30,6 +38,7 @@ export interface PageBlock {
 	id: number;
 	position: number;
 	img: string | null;
+	template: ContentTemplate | null;
 	paragraphs: PageParagraph[];
 }
 
@@ -37,6 +46,7 @@ export interface PageTab {
 	id: number;
 	position: number;
 	label: string;
+	template: ContentTemplate | null;
 	blocks: PageBlock[];
 }
 
@@ -58,6 +68,7 @@ export interface PageInput {
 export interface TabInput {
 	label?: string;
 	position?: number;
+	template?: ContentTemplate | null;
 }
 
 export interface BlockInput {
@@ -65,6 +76,7 @@ export interface BlockInput {
 	tab_id?: number | null;
 	img?: string | null;
 	position?: number;
+	template?: ContentTemplate | null;
 }
 
 export interface ParagraphInput {

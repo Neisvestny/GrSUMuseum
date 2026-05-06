@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { HttpError } from '../shared/errors';
 import type {
 	BlockDto,
+	ContentTemplate,
 	PageBlockRow,
 	PageDto,
 	PageParagraphRow,
@@ -19,6 +20,7 @@ interface PageInput {
 interface TabInput {
 	label?: string;
 	position?: number;
+	template?: ContentTemplate | null;
 }
 
 interface BlockInput {
@@ -26,11 +28,32 @@ interface BlockInput {
 	tab_id?: number | null;
 	img?: string | null;
 	position?: number;
+	template?: ContentTemplate | null;
 }
 
 interface ParagraphInput {
 	text?: string;
 	position?: number;
+}
+
+function rowContentTemplate(v: string | null | undefined): ContentTemplate | null {
+	if (v === null || v === undefined) return null;
+	if (v === 'alternating_blocks' || v === 'text_image') return v;
+	return null;
+}
+
+function mapBlockRow(row: {
+	id: number;
+	page_id: number | null;
+	tab_id: number | null;
+	position: number;
+	img: string | null;
+	template: string | null;
+}): PageBlockRow {
+	return {
+		...row,
+		template: rowContentTemplate(row.template),
+	};
 }
 
 function toPageRow(row: { id: number; slug: string; title: string; template: string }): PageRow {
@@ -94,7 +117,7 @@ export class PagesService {
 			this.prisma.page_tabs.findMany({
 				where: { page_id: page.id },
 				orderBy: { position: 'asc' },
-				select: { id: true, page_id: true, position: true, label: true },
+				select: { id: true, page_id: true, position: true, label: true, template: true },
 			}),
 			this.prisma.page_blocks.findMany({
 				where: {
@@ -107,6 +130,7 @@ export class PagesService {
 					tab_id: true,
 					position: true,
 					img: true,
+					template: true,
 				},
 			}),
 		]);
@@ -128,10 +152,16 @@ export class PagesService {
 			paragraphsByBlock.set(p.block_id, list);
 		}
 
-		const blockToDto = (b: PageBlockRow): BlockDto => ({
+		const blockToDto = (b: {
+			id: number;
+			position: number;
+			img: string | null;
+			template: string | null;
+		}): BlockDto => ({
 			id: b.id,
 			position: b.position,
 			img: b.img,
+			template: rowContentTemplate(b.template),
 			paragraphs: (paragraphsByBlock.get(b.id) ?? []).map((p) => ({
 				id: p.id,
 				position: p.position,
@@ -143,6 +173,7 @@ export class PagesService {
 			id: t.id,
 			position: t.position,
 			label: t.label,
+			template: rowContentTemplate(t.template),
 			blocks: blocksRes.filter((b) => b.tab_id === t.id).map(blockToDto),
 		}));
 
@@ -221,11 +252,15 @@ export class PagesService {
 	}
 
 	async listTabs(pageId: number): Promise<PageTabRow[]> {
-		return this.prisma.page_tabs.findMany({
+		const rows = await this.prisma.page_tabs.findMany({
 			where: { page_id: pageId },
 			orderBy: { position: 'asc' },
-			select: { id: true, page_id: true, position: true, label: true },
+			select: { id: true, page_id: true, position: true, label: true, template: true },
 		});
+		return rows.map((r) => ({
+			...r,
+			template: rowContentTemplate(r.template),
+		}));
 	}
 
 	async createTab(pageId: number, data: TabInput): Promise<PageTabRow> {
@@ -246,10 +281,19 @@ export class PagesService {
 				data: { position: { increment: 1 } },
 			});
 
-			return tx.page_tabs.create({
-				data: { page_id: pageId, position: insertPos, label },
-				select: { id: true, page_id: true, position: true, label: true },
+			const row = await tx.page_tabs.create({
+				data: {
+					page_id: pageId,
+					position: insertPos,
+					label,
+					template: data.template ?? null,
+				},
+				select: { id: true, page_id: true, position: true, label: true, template: true },
 			});
+			return {
+				...row,
+				template: rowContentTemplate(row.template),
+			};
 		});
 	}
 
@@ -257,7 +301,7 @@ export class PagesService {
 		return this.prisma.$transaction(async (tx) => {
 			const existing = await tx.page_tabs.findUnique({
 				where: { id: tabId },
-				select: { id: true, page_id: true, position: true, label: true },
+				select: { id: true, page_id: true, position: true, label: true, template: true },
 			});
 			if (!existing) return null;
 
@@ -273,17 +317,24 @@ export class PagesService {
 				);
 			}
 
-			if (data.label !== undefined) {
+			if (data.label !== undefined || data.template !== undefined) {
 				await tx.page_tabs.update({
 					where: { id: tabId },
-					data: { label: data.label },
+					data: {
+						...(data.label !== undefined ? { label: data.label } : {}),
+						...(data.template !== undefined ? { template: data.template } : {}),
+					},
 				});
 			}
 
-			return tx.page_tabs.findUniqueOrThrow({
+			const row = await tx.page_tabs.findUniqueOrThrow({
 				where: { id: tabId },
-				select: { id: true, page_id: true, position: true, label: true },
+				select: { id: true, page_id: true, position: true, label: true, template: true },
 			});
+			return {
+				...row,
+				template: rowContentTemplate(row.template),
+			};
 		});
 	}
 
@@ -323,15 +374,24 @@ export class PagesService {
 					where: { page_id: pageId, position: { gte: insertPos } },
 					data: { position: { increment: 1 } },
 				});
-				return tx.page_blocks.create({
+				const created = await tx.page_blocks.create({
 					data: {
 						page_id: pageId,
 						tab_id: null,
 						position: insertPos,
 						img: data.img ?? null,
+						template: data.template ?? null,
 					},
-					select: { id: true, page_id: true, tab_id: true, position: true, img: true },
+					select: {
+						id: true,
+						page_id: true,
+						tab_id: true,
+						position: true,
+						img: true,
+						template: true,
+					},
 				});
+				return mapBlockRow(created);
 			}
 
 			await assertTabExists(tx, tabId!);
@@ -346,15 +406,24 @@ export class PagesService {
 				where: { tab_id: tabId!, position: { gte: insertPos } },
 				data: { position: { increment: 1 } },
 			});
-			return tx.page_blocks.create({
+			const created = await tx.page_blocks.create({
 				data: {
 					page_id: null,
 					tab_id: tabId!,
 					position: insertPos,
 					img: data.img ?? null,
+					template: data.template ?? null,
 				},
-				select: { id: true, page_id: true, tab_id: true, position: true, img: true },
+				select: {
+					id: true,
+					page_id: true,
+					tab_id: true,
+					position: true,
+					img: true,
+					template: true,
+				},
 			});
+			return mapBlockRow(created);
 		});
 	}
 
@@ -362,7 +431,14 @@ export class PagesService {
 		return this.prisma.$transaction(async (tx) => {
 			const existing = await tx.page_blocks.findUnique({
 				where: { id: blockId },
-				select: { id: true, page_id: true, tab_id: true, position: true, img: true },
+				select: {
+					id: true,
+					page_id: true,
+					tab_id: true,
+					position: true,
+					img: true,
+					template: true,
+				},
 			});
 			if (!existing) return null;
 
@@ -401,17 +477,28 @@ export class PagesService {
 				}
 			}
 
-			if (data.img !== undefined) {
+			if (data.img !== undefined || data.template !== undefined) {
 				await tx.page_blocks.update({
 					where: { id: blockId },
-					data: { img: data.img },
+					data: {
+						...(data.img !== undefined ? { img: data.img } : {}),
+						...(data.template !== undefined ? { template: data.template } : {}),
+					},
 				});
 			}
 
-			return tx.page_blocks.findUniqueOrThrow({
+			const updated = await tx.page_blocks.findUniqueOrThrow({
 				where: { id: blockId },
-				select: { id: true, page_id: true, tab_id: true, position: true, img: true },
+				select: {
+					id: true,
+					page_id: true,
+					tab_id: true,
+					position: true,
+					img: true,
+					template: true,
+				},
 			});
+			return mapBlockRow(updated);
 		});
 	}
 

@@ -323,12 +323,20 @@ function isPagePayload(value: unknown): value is {
 	);
 }
 
-function isTabPayload(value: unknown): value is { label?: string; position?: number } {
+function isTabPayload(value: unknown): value is {
+	label?: string;
+	position?: number;
+	template?: 'alternating_blocks' | 'text_image' | null;
+} {
 	if (typeof value !== 'object' || value === null) return false;
 	const data = value as Record<string, unknown>;
 	return (
 		(data.label === undefined || typeof data.label === 'string') &&
-		(data.position === undefined || typeof data.position === 'number')
+		(data.position === undefined || typeof data.position === 'number') &&
+		(data.template === undefined ||
+			data.template === null ||
+			data.template === 'alternating_blocks' ||
+			data.template === 'text_image')
 	);
 }
 
@@ -337,6 +345,7 @@ function isBlockPayload(value: unknown): value is {
 	tab_id?: number | null;
 	img?: string | null;
 	position?: number;
+	template?: 'alternating_blocks' | 'text_image' | null;
 } {
 	if (typeof value !== 'object' || value === null) return false;
 	const data = value as Record<string, unknown>;
@@ -344,7 +353,11 @@ function isBlockPayload(value: unknown): value is {
 		(data.page_id === undefined || data.page_id === null || typeof data.page_id === 'number') &&
 		(data.tab_id === undefined || data.tab_id === null || typeof data.tab_id === 'number') &&
 		(data.img === undefined || data.img === null || typeof data.img === 'string') &&
-		(data.position === undefined || typeof data.position === 'number')
+		(data.position === undefined || typeof data.position === 'number') &&
+		(data.template === undefined ||
+			data.template === null ||
+			data.template === 'alternating_blocks' ||
+			data.template === 'text_image')
 	);
 }
 

@@ -40,11 +40,15 @@ export type PageTemplate =
 	| 'text_image'
 	| 'tabs_text_image';
 
+/** Вариант вёрстки контента вкладки или блока (без «tabs_*»). */
+export type ContentTemplate = 'alternating_blocks' | 'text_image';
+
 export interface PageTabRow {
 	id: number;
 	page_id: number;
 	position: number;
 	label: string;
+	template: ContentTemplate | null;
 }
 
 export interface PageBlockRow {
@@ -53,6 +57,7 @@ export interface PageBlockRow {
 	tab_id: number | null;
 	position: number;
 	img: string | null;
+	template: ContentTemplate | null;
 }
 
 export interface PageParagraphRow {
@@ -80,6 +85,7 @@ export interface PageDto {
 		id: number;
 		position: number;
 		label: string;
+		template: ContentTemplate | null;
 		blocks: BlockDto[];
 	}>;
 	blocks: BlockDto[];
@@ -89,6 +95,7 @@ export interface BlockDto {
 	id: number;
 	position: number;
 	img: string | null;
+	template: ContentTemplate | null;
 	paragraphs: Array<{
 		id: number;
 		position: number;

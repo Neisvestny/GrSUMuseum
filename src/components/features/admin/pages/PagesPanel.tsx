@@ -3,6 +3,7 @@ import {
 	createBlock,
 	createPage,
 	createParagraph,
+	CONTENT_TEMPLATES,
 	createTab,
 	deleteBlock,
 	deletePage,
@@ -17,6 +18,7 @@ import {
 	updateTab,
 	type PageBlock,
 	type PageDto,
+	type ContentTemplate,
 	type PageSummary,
 	type PageTab,
 	type PageTemplate,
@@ -42,6 +44,8 @@ export default function PagesPanel() {
 	const [newPageSlug, setNewPageSlug] = useState('');
 	const [newPageTitle, setNewPageTitle] = useState('');
 	const [newPageTemplate, setNewPageTemplate] = useState<PageTemplate>('tabs_alternating');
+	/** В какую вкладку кладём новый блок (если вкладки есть). */
+	const [newBlockTabId, setNewBlockTabId] = useState<number | null>(null);
 
 	const loadPages = async () => {
 		try {
@@ -91,6 +95,17 @@ export default function PagesPanel() {
 	}, [selectedPageId]);
 
 	const tabs = selectedPage?.tabs ?? [];
+
+	useEffect(() => {
+		if (tabs.length === 0) {
+			setNewBlockTabId(null);
+			return;
+		}
+		setNewBlockTabId((prev) => {
+			if (prev !== null && tabs.some((t) => t.id === prev)) return prev;
+			return tabs[0]?.id ?? null;
+		});
+	}, [selectedPageId, tabs]);
 	const directBlocks = selectedPage?.blocks ?? [];
 
 	const allBlocks = useMemo(
@@ -157,7 +172,10 @@ export default function PagesPanel() {
 		}
 	};
 
-	const saveTab = async (tabId: number, data: { label?: string; position?: number }) => {
+	const saveTab = async (
+		tabId: number,
+		data: { label?: string; position?: number; template?: ContentTemplate | null },
+	) => {
 		if (!selectedPageId) return;
 		try {
 			await updateTab(tabId, data);
@@ -184,7 +202,7 @@ export default function PagesPanel() {
 		try {
 			await createBlock({ page_id: selectedPageId, img: '' });
 			await loadPage(selectedPageId);
-			toast.success('Блок добавлен');
+			toast.success('Блок добавлен на страницу');
 		} catch (error) {
 			toast.error(errorMessage(error, 'Не удалось добавить блок страницы'));
 		}
@@ -195,13 +213,25 @@ export default function PagesPanel() {
 		try {
 			await createBlock({ tab_id: tabId, img: '' });
 			await loadPage(selectedPageId);
-			toast.success('Блок во вкладку добавлен');
+			toast.success('Блок добавлен');
 		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось добавить блок вкладки'));
+			toast.error(errorMessage(error, 'Не удалось добавить блок'));
 		}
 	};
 
-	const saveBlock = async (blockId: number, data: { img?: string | null; position?: number }) => {
+	const addBlockDefault = async () => {
+		if (!selectedPageId) return;
+		if (tabs.length > 0 && newBlockTabId !== null) {
+			await addBlockToTab(newBlockTabId);
+		} else {
+			await addBlockToPage();
+		}
+	};
+
+	const saveBlock = async (
+		blockId: number,
+		data: { img?: string | null; position?: number; template?: ContentTemplate | null },
+	) => {
 		if (!selectedPageId) return;
 		try {
 			await updateBlock(blockId, data);
@@ -361,14 +391,6 @@ export default function PagesPanel() {
 											onSave={(data) => saveTab(tab.id, data)}
 											onDelete={() => removeTab(tab.id)}
 										/>
-										<div className="mt-2 ml-2">
-											<AdminButton
-												size="sm"
-												onClick={() => void addBlockToTab(tab.id)}
-											>
-												+ Блок во вкладку
-											</AdminButton>
-										</div>
 									</div>
 								))}
 								{tabs.length === 0 && (
@@ -380,11 +402,44 @@ export default function PagesPanel() {
 						</div>
 
 						<div className="border-2 border-blue-50 rounded-xl p-3">
-							<div className="flex items-center justify-between mb-2">
+							<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2">
 								<h4 className="font-semibold text-blue-800">Блоки</h4>
-								<AdminButton size="sm" onClick={() => void addBlockToPage()}>
-									+ Блок страницы
-								</AdminButton>
+								<div className="flex flex-wrap items-center gap-2">
+									{tabs.length > 0 && newBlockTabId !== null && (
+										<label className="flex items-center gap-2 text-sm text-blue-800">
+											<span className={adminLabelClass}>Во вкладку</span>
+											<select
+												className={`${adminInputClass} min-w-40`}
+												value={newBlockTabId}
+												onChange={(e) =>
+													setNewBlockTabId(Number(e.target.value))
+												}
+											>
+												{tabs.map((tab) => (
+													<option key={tab.id} value={tab.id}>
+														{tab.label}
+													</option>
+												))}
+											</select>
+										</label>
+									)}
+									<AdminButton
+										size="sm"
+										variant="primary"
+										onClick={() => void addBlockDefault()}
+									>
+										+ Блок
+									</AdminButton>
+									{tabs.length > 0 && (
+										<AdminButton
+											size="sm"
+											variant="secondary"
+											onClick={() => void addBlockToPage()}
+										>
+											На страницу (без вкладки)
+										</AdminButton>
+									)}
+								</div>
 							</div>
 							<div className="flex flex-col gap-3">
 								{allBlocks.map(({ block, parentLabel }) => (
@@ -418,7 +473,10 @@ function PageMetaCard({
 	onDelete,
 }: {
 	page: PageDto;
-	onSave: (id: number, data: { slug?: string; title?: string; template?: PageTemplate }) => void;
+	onSave: (
+		id: number,
+		data: { slug?: string; title?: string; template?: PageTemplate },
+	) => void;
 	onDelete: (id: number) => void;
 }) {
 	const [slug, setSlug] = useState(page.slug);
@@ -433,6 +491,9 @@ function PageMetaCard({
 	return (
 		<div className="border-2 border-blue-50 rounded-xl p-3">
 			<h4 className="font-semibold text-blue-800 mb-2">Метаданные страницы</h4>
+			<p className="text-xs text-gray-500 mb-2">
+				Базовый шаблон задаёт вид контента, если у вкладки или блока не выбран свой.
+			</p>
 			<div className="grid grid-cols-2 gap-2">
 				<label>
 					<span className={adminLabelClass}>Slug</span>
@@ -451,7 +512,7 @@ function PageMetaCard({
 					/>
 				</label>
 				<label>
-					<span className={adminLabelClass}>Шаблон</span>
+					<span className={adminLabelClass}>Базовый шаблон</span>
 					<select
 						className={adminInputClass}
 						value={template}
@@ -493,43 +554,75 @@ function TabEditor({
 }: {
 	tab: PageTab;
 	maxPos: number;
-	onSave: (data: { label?: string; position?: number }) => void;
+	onSave: (data: {
+		label?: string;
+		position?: number;
+		template?: ContentTemplate | null;
+	}) => void;
 	onDelete: () => void;
 }) {
 	const [label, setLabel] = useState(tab.label);
 	const [position, setPosition] = useState(String(tab.position));
+	const [template, setTemplate] = useState<string>(tab.template ?? '');
 	useEffect(() => {
 		setLabel(tab.label);
 		setPosition(String(tab.position));
-	}, [tab.label, tab.position]);
+		setTemplate(tab.template ?? '');
+	}, [tab.label, tab.position, tab.template, tab.id]);
 
 	return (
-		<div className="grid grid-cols-[1fr_100px_auto_auto] gap-2 items-end">
-			<label>
-				<span className={adminLabelClass}>Название вкладки</span>
-				<input
+		<div className="flex flex-col gap-2">
+			<div className="grid grid-cols-[1fr_100px_auto_auto] gap-2 items-end">
+				<label>
+					<span className={adminLabelClass}>Название вкладки</span>
+					<input
+						className={adminInputClass}
+						value={label}
+						onChange={(e) => setLabel(e.target.value)}
+					/>
+				</label>
+				<label>
+					<span className={adminLabelClass}>Позиция</span>
+					<input
+						type="number"
+						min={1}
+						max={maxPos}
+						className={adminInputClass}
+						value={position}
+						onChange={(e) => setPosition(e.target.value)}
+					/>
+				</label>
+				<AdminButton
+					size="sm"
+					onClick={() =>
+						onSave({
+							label,
+							position: Number(position),
+							template: template === '' ? null : (template as ContentTemplate),
+						})
+					}
+				>
+					Сохранить
+				</AdminButton>
+				<AdminButton size="sm" variant="danger" onClick={onDelete}>
+					Удалить
+				</AdminButton>
+			</div>
+			<label className="block max-w-md">
+				<span className={adminLabelClass}>Шаблон контента вкладки</span>
+				<select
 					className={adminInputClass}
-					value={label}
-					onChange={(e) => setLabel(e.target.value)}
-				/>
+					value={template}
+					onChange={(e) => setTemplate(e.target.value)}
+				>
+					<option value="">Как у страницы (базовый)</option>
+					{CONTENT_TEMPLATES.map((item) => (
+						<option key={item.value} value={item.value}>
+							{item.label}
+						</option>
+					))}
+				</select>
 			</label>
-			<label>
-				<span className={adminLabelClass}>Позиция</span>
-				<input
-					type="number"
-					min={1}
-					max={maxPos}
-					className={adminInputClass}
-					value={position}
-					onChange={(e) => setPosition(e.target.value)}
-				/>
-			</label>
-			<AdminButton size="sm" onClick={() => onSave({ label, position: Number(position) })}>
-				Сохранить
-			</AdminButton>
-			<AdminButton size="sm" variant="danger" onClick={onDelete}>
-				Удалить
-			</AdminButton>
 		</div>
 	);
 }
@@ -547,7 +640,11 @@ function BlockEditor({
 	block: PageBlock;
 	parentLabel: string;
 	maxPos: number;
-	onSave: (data: { img?: string | null; position?: number }) => void;
+	onSave: (data: {
+		img?: string | null;
+		position?: number;
+		template?: ContentTemplate | null;
+	}) => void;
 	onDelete: () => void;
 	onAddParagraph: () => void;
 	onSaveParagraph: (paragraphId: number, data: { text?: string; position?: number }) => void;
@@ -555,10 +652,12 @@ function BlockEditor({
 }) {
 	const [img, setImg] = useState(block.img ?? '');
 	const [position, setPosition] = useState(String(block.position));
+	const [template, setTemplate] = useState<string>(block.template ?? '');
 	useEffect(() => {
 		setImg(block.img ?? '');
 		setPosition(String(block.position));
-	}, [block.img, block.position]);
+		setTemplate(block.template ?? '');
+	}, [block.img, block.position, block.template, block.id]);
 
 	return (
 		<div className="border border-blue-100 rounded-xl p-3">
@@ -583,7 +682,16 @@ function BlockEditor({
 						onChange={(e) => setPosition(e.target.value)}
 					/>
 				</label>
-				<AdminButton size="sm" onClick={() => onSave({ img, position: Number(position) })}>
+				<AdminButton
+					size="sm"
+					onClick={() =>
+						onSave({
+							img,
+							position: Number(position),
+							template: template === '' ? null : (template as ContentTemplate),
+						})
+					}
+				>
 					Сохранить
 				</AdminButton>
 				<AdminButton size="sm" onClick={onAddParagraph}>
@@ -593,6 +701,22 @@ function BlockEditor({
 					Удалить
 				</AdminButton>
 			</div>
+
+			<label className="block max-w-md mt-2">
+				<span className={adminLabelClass}>Шаблон блока</span>
+				<select
+					className={adminInputClass}
+					value={template}
+					onChange={(e) => setTemplate(e.target.value)}
+				>
+					<option value="">Как у вкладки / страницы</option>
+					{CONTENT_TEMPLATES.map((item) => (
+						<option key={item.value} value={item.value}>
+							{item.label}
+						</option>
+					))}
+				</select>
+			</label>
 
 			<div className="mt-2 flex flex-col gap-2">
 				{block.paragraphs.map((paragraph) => (

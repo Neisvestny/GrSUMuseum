@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
-import type { PageDto } from '../../api/pages';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import type { ContentTemplate, PageBlock, PageDto } from '../../api/pages';
 import { EmptyState, ErrorState, LoadingState } from '../design-system/States';
 import TabsBar from '../design-system/TabsBar';
 import AlternatingBlocks from './AlternatingBlocks';
@@ -12,6 +12,15 @@ type Props = {
 	error: string | null;
 	emptyText?: string;
 };
+
+function pageDefaultContentTemplate(t: PageDto['template']): ContentTemplate {
+	if (t === 'text_image' || t === 'tabs_text_image') return 'text_image';
+	return 'alternating_blocks';
+}
+
+function isTabsChrome(t: PageDto['template']): boolean {
+	return t === 'tabs_alternating' || t === 'tabs_text_image';
+}
 
 export default function CmsPageContent({
 	page,
@@ -37,23 +46,18 @@ export default function CmsPageContent({
 		[tabs],
 	);
 
-	const blocks = useMemo(() => {
-		if (!page) return [];
-		if (!isTabsTemplate(page.template)) return page.blocks;
-		if (tabs.length === 0) return page.blocks;
-		const selectedTabId = Number(activeTab || tabs[0]?.id);
-		const selectedTab = tabs.find((tab) => tab.id === selectedTabId) ?? tabs[0];
-		return selectedTab?.blocks ?? [];
-	}, [activeTab, page, tabs]);
+	const pageBase = page ? pageDefaultContentTemplate(page.template) : 'alternating_blocks';
+	const showTabsBar = page ? isTabsChrome(page.template) && tabs.length > 0 : false;
 
-	const preparedBlocks = blocks.map((b) => ({
-		img: b.img ?? undefined,
-		text: b.paragraphs.map((p) => p.text).join('\n\n'),
-	}));
+	const selectedTabId = Number(activeTab || tabs[0]?.id);
+	const selectedTab = tabs.find((tab) => tab.id === selectedTabId) ?? tabs[0];
 
-	const firstBlock = blocks[0];
-	const firstText = firstBlock?.paragraphs.map((p) => p.text).join('\n\n') ?? '';
-	const firstImage = firstBlock?.img ?? '';
+	const sectionBase: ContentTemplate =
+		showTabsBar && selectedTab ? (selectedTab.template ?? pageBase) : pageBase;
+
+	const blocksToRender: PageBlock[] = showTabsBar
+		? (selectedTab?.blocks ?? [])
+		: (page?.blocks ?? []);
 
 	if (loading) return <LoadingState />;
 	if (error) return <ErrorState text={error} />;
@@ -61,7 +65,7 @@ export default function CmsPageContent({
 
 	return (
 		<>
-			{isTabsTemplate(page.template) && preparedTabs.length > 0 && (
+			{showTabsBar && preparedTabs.length > 0 && (
 				<TabsBar
 					tabs={preparedTabs}
 					activeTab={activeTab || preparedTabs[0].id}
@@ -70,39 +74,54 @@ export default function CmsPageContent({
 			)}
 			<AnimatePresence mode="wait">
 				<motion.div
-					key={activeTab || 'no-tabs'}
+					key={showTabsBar ? activeTab || 'tab' : 'direct'}
 					initial={{ opacity: 0, y: 16 }}
 					animate={{ opacity: 1, y: 0 }}
 					exit={{ opacity: 0, y: -16 }}
 					transition={{ duration: 0.2 }}
+					className="flex flex-col gap-8"
 				>
-					{renderTemplate({
-						template: page.template,
-						title: page.title,
-						preparedBlocks,
-						firstImage,
-						firstText,
-						emptyText,
-					})}
+					{blocksToRender.length === 0 ? (
+						<EmptyState text={emptyText} />
+					) : (
+						blocksToRender.map((block) => {
+							const layout: ContentTemplate = block.template ?? sectionBase;
+							const text = block.paragraphs.map((p) => p.text).join('\n\n');
+							const preparedBlocks = [
+								{ img: block.img ?? undefined, text },
+							];
+							const firstText = text;
+							const firstImage = block.img ?? '';
+
+							return (
+								<Fragment key={block.id}>
+									{renderContentLayout({
+										layout,
+										title: page.title,
+										preparedBlocks,
+										firstText,
+										firstImage,
+										emptyText,
+									})}
+								</Fragment>
+							);
+						})
+					)}
 				</motion.div>
 			</AnimatePresence>
 		</>
 	);
 }
 
-function isTabsTemplate(template: PageDto['template']): boolean {
-	return template === 'tabs_alternating' || template === 'tabs_text_image';
-}
-
-function renderTemplate({
-	template,
+function renderContentLayout({
+	layout,
 	title,
 	preparedBlocks,
 	firstText,
 	firstImage,
 	emptyText,
 }: {
-	template: PageDto['template'];
+	layout: ContentTemplate;
 	title: string;
 	preparedBlocks: Array<{ img?: string; text: string }>;
 	firstText: string;
@@ -113,9 +132,8 @@ function renderTemplate({
 		return <EmptyState text={emptyText} />;
 	}
 
-	switch (template) {
+	switch (layout) {
 		case 'text_image':
-		case 'tabs_text_image':
 			return (
 				<TextImagePanel
 					title={title}
@@ -125,7 +143,6 @@ function renderTemplate({
 				/>
 			);
 		case 'alternating_blocks':
-		case 'tabs_alternating':
 		default:
 			return <AlternatingBlocks blocks={preparedBlocks} />;
 	}
