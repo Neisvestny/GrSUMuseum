@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Teacher, TeacherMutation } from '../../../../api/teachers';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
 import { ErrorBox } from '../ui/ErrorBox';
+import ImagePathInput from '../ui/ImagePathInput';
 
 type Props = {
 	initial: Partial<Teacher> & { id?: number; position?: number };
@@ -86,15 +87,12 @@ export default function TeacherForm({ initial, maxPos, onSave, onCancel, busy }:
 					placeholder="Краткая биография..."
 				/>
 			</label>
-			<label>
-				<span className={adminLabelClass}>Фото (URL или путь)</span>
-				<input
-					className={adminInputClass}
-					value={form.img}
-					onChange={set('img')}
-					placeholder="/images/teacher.jpg"
-				/>
-			</label>
+			<ImagePathInput
+				label="Фото"
+				value={form.img}
+				onChange={(next) => setForm((f) => ({ ...f, img: next }))}
+				placeholder="например: teachers/teacher.jpg"
+			/>
 			<div className="flex gap-2 mt-1">
 				<button
 					onClick={handleSave}

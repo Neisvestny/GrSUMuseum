@@ -184,4 +184,29 @@ export class RectorsService {
 			return true;
 		});
 	}
+
+	async reorder(orderedIds: number[]): Promise<void> {
+		const ids = orderedIds.filter((n) => Number.isFinite(n));
+		if (ids.length === 0) return;
+
+		await this.prisma.$transaction(async (tx) => {
+			const existing = await tx.rectors.findMany({
+				where: { id: { in: ids } },
+				select: { id: true },
+			});
+			if (existing.length !== ids.length) {
+				// не делаем частичные апдейты
+				throw new Error('Некоторые ректоры не найдены');
+			}
+
+			// временные уникальные позиции (отрицательные id)
+			for (const id of ids) {
+				await tx.rectors.update({ where: { id }, data: { position: -id } });
+			}
+
+			for (let i = 0; i < ids.length; i++) {
+				await tx.rectors.update({ where: { id: ids[i] }, data: { position: i + 1 } });
+			}
+		});
+	}
 }

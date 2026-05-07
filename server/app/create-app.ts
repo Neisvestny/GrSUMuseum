@@ -6,6 +6,7 @@ import { menuRouter } from '../modules/menu';
 import { pagesRouter } from '../modules/pages';
 import { rectorsRouter } from '../modules/rectors';
 import { teachersRouter } from '../modules/teachers';
+import { filesRouter } from '../routes/files.router';
 import { imagesRouter } from '../routes/images.router';
 import { errorHandler } from './middleware/error-handler';
 
@@ -18,6 +19,7 @@ export function createApp() {
 	app.use('/api/teachers', teachersRouter);
 	app.use('/api/rectors', rectorsRouter);
 	app.use('/api/images', imagesRouter);
+	app.use('/api/files', filesRouter);
 	app.use('/api/pages', pagesRouter);
 	app.use('/api/menu', menuRouter);
 	app.use('/api/gallery', galleryRouter);

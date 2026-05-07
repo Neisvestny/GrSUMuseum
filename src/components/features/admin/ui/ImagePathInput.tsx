@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchImagesIndex } from '../../../../api/images';
+import FileManagerModal from '../files/FileManagerModal';
 import { adminInputClass, adminLabelClass } from './adminFormStyles';
 
 type Suggestion = { name: string; url: string };
@@ -28,6 +29,7 @@ export default function ImagePathInput({
 	placeholder?: string;
 }) {
 	const [open, setOpen] = useState(false);
+	const [pickerOpen, setPickerOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -100,6 +102,13 @@ export default function ImagePathInput({
 							setOpen(true);
 						}}
 					/>
+					<button
+						type="button"
+						onClick={() => setPickerOpen(true)}
+						className="px-4 rounded-xl border-2 border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-50 active:scale-95 transition-all"
+					>
+						Выбрать…
+					</button>
 				</div>
 			</label>
 
@@ -142,6 +151,13 @@ export default function ImagePathInput({
 					)}
 				</div>
 			)}
+
+			<FileManagerModal
+				open={pickerOpen}
+				title="Файловый менеджер"
+				onClose={() => setPickerOpen(false)}
+				onPick={(url) => onChange(url)}
+			/>
 		</div>
 	);
 }

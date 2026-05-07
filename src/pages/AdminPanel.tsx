@@ -1,9 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { GripVertical } from 'lucide-react';
 import type { Rector } from '../api/rectors';
 import MenuPanel from '../components/features/admin/menu/MenuPanel';
 import PagesPanel from '../components/features/admin/pages/PagesPanel';
+import FilesPanel from '../components/features/admin/files/FilesPanel';
+import PhotosGalleryPanel from '../components/features/admin/gallery/PhotosGalleryPanel';
+import VideosGalleryPanel from '../components/features/admin/gallery/VideosGalleryPanel';
 import { EMPTY_RECTOR } from '../components/features/admin/rectors/constants';
 import RectorCard from '../components/features/admin/rectors/RectorCard';
 import RectorForm from '../components/features/admin/rectors/RectorForm';
@@ -12,6 +18,8 @@ import AdminButton from '../components/features/admin/ui/AdminButton';
 import { AdminToastProvider, useAdminToast } from '../components/features/admin/ui/AdminToastContext';
 import { ErrorBox } from '../components/features/admin/ui/ErrorBox';
 import { useRectors } from '../hooks/useRectors';
+import { reorderRectors } from '../api/rectors';
+import { CSS } from '@dnd-kit/utilities';
 
 const SECTIONS = [
 	{ id: 'teachers-vov', label: 'Купаловцы помнят', sub: 'ВОВ', icon: '🎖️' },
@@ -40,6 +48,9 @@ const SECTIONS = [
 		icon: '🏋️',
 	},
 	{ id: 'rectors', label: 'Ректоры ГрГУ', sub: '', icon: '🎓' },
+	{ id: 'files', label: 'Файлы', sub: 'public/images', icon: '🗂️' },
+	{ id: 'gallery-photos', label: 'Фотогалерея', sub: 'Годы + позиции', icon: '🖼️' },
+	{ id: 'gallery-videos', label: 'Видеогалерея', sub: 'Позиции + теги', icon: '🎬' },
 	{ id: 'pages-cms', label: 'CMS страницы', sub: 'Табы, блоки, абзацы', icon: '🧩' },
 	{ id: 'menu-cms', label: 'Меню разделов', sub: 'Навигация', icon: '🧭' },
 ] as const;
@@ -49,9 +60,16 @@ type SectionId = (typeof SECTIONS)[number]['id'];
 function RectorsPanel() {
 	const toast = useAdminToast();
 	const { rectors, loading, error, add, update, remove, reload } = useRectors();
+	const [items, setItems] = useState(rectors);
 	const [adding, setAdding] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [addErr, setAddErr] = useState<string | null>(null);
+
+	useEffect(() => {
+		setItems(rectors);
+	}, [rectors]);
+
+	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
 	useEffect(() => {
 		if (error) toast.error(error);
@@ -119,15 +137,40 @@ function RectorsPanel() {
 			{error && <div className="text-center text-red-500 py-8">{error}</div>}
 			<div className="flex flex-col gap-3">
 				<AnimatePresence>
-					{rectors.map((r) => (
-						<RectorCard
-							key={`rector:${r.name}:${r.years}:${r.img}:${r.description}:${r.full_text}`}
-							rector={r}
-							onUpdate={update}
-							onDelete={remove}
-							onChanged={reload}
-						/>
-					))}
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={(evt) => {
+							const activeId = evt.active.id as number;
+							const overId = evt.over?.id as number | undefined;
+							if (!overId || activeId === overId) return;
+							const oldIndex = items.findIndex((r) => r.id === activeId);
+							const newIndex = items.findIndex((r) => r.id === overId);
+							if (oldIndex < 0 || newIndex < 0) return;
+							const next = arrayMove(items, oldIndex, newIndex);
+							setItems(next);
+							void reorderRectors(next.map((r) => r.id))
+								.then(() => reload())
+								.catch((e) =>
+									toast.error(e instanceof Error ? e.message : 'Не удалось сохранить порядок'),
+								);
+						}}
+					>
+						<SortableContext
+							items={items.map((r) => r.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							{items.map((r) => (
+								<SortableRectorCard
+									key={r.id}
+									rector={r}
+									onUpdate={update}
+									onDelete={remove}
+									onChanged={reload}
+								/>
+							))}
+						</SortableContext>
+					</DndContext>
 				</AnimatePresence>
 				{!loading && rectors.length === 0 && (
 					<div className="text-center text-gray-400 py-12 text-sm">
@@ -135,6 +178,35 @@ function RectorsPanel() {
 					</div>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function SortableRectorCard(props: ComponentProps<typeof RectorCard> & { rector: Rector }) {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+		id: props.rector.id,
+	});
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+	};
+
+	return (
+		<div ref={setNodeRef} style={style} className={isDragging ? 'opacity-70' : ''}>
+			<RectorCard
+				{...props}
+				dragHandle={
+					<button
+						type="button"
+						className="p-2 rounded-xl border-2 border-blue-100 text-blue-500 hover:bg-blue-50 active:scale-95 transition-all touch-none"
+						{...attributes}
+						{...listeners}
+						aria-label="Перетащить"
+					>
+						<GripVertical className="w-4 h-4" />
+					</button>
+				}
+			/>
 		</div>
 	);
 }
@@ -153,6 +225,12 @@ function PanelRouter({ sectionId }: { sectionId: SectionId }) {
 			return <TeachersPanel section="trainer" />;
 		case 'rectors':
 			return <RectorsPanel />;
+		case 'files':
+			return <FilesPanel />;
+		case 'gallery-photos':
+			return <PhotosGalleryPanel />;
+		case 'gallery-videos':
+			return <VideosGalleryPanel />;
 		case 'pages-cms':
 			return <PagesPanel />;
 		case 'menu-cms':

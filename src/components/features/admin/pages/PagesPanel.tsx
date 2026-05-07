@@ -26,8 +26,20 @@ import {
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import ImagePathInput from '../ui/ImagePathInput';
 import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
+import type { MediaItem } from '../../../../api/pages';
+import MediaBrowserModal from '../media/MediaBrowserModal';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import {
+	SortableContext,
+	arrayMove,
+	horizontalListSortingStrategy,
+	useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, X } from 'lucide-react';
 
 function errorMessage(error: unknown, fallback: string): string {
 	return error instanceof ApiError ? error.message : fallback;
@@ -139,7 +151,7 @@ export default function PagesPanel() {
 
 	const savePageMeta = async (
 		id: number,
-		data: { slug?: string; title?: string; template?: PageTemplate },
+		data: { slug?: string; title?: string; template?: PageTemplate; media?: MediaItem[] },
 	) => {
 		try {
 			await updatePage(id, data);
@@ -475,17 +487,19 @@ function PageMetaCard({
 	page: PageDto;
 	onSave: (
 		id: number,
-		data: { slug?: string; title?: string; template?: PageTemplate },
+		data: { slug?: string; title?: string; template?: PageTemplate; media?: MediaItem[] },
 	) => void;
 	onDelete: (id: number) => void;
 }) {
 	const [slug, setSlug] = useState(page.slug);
 	const [title, setTitle] = useState(page.title);
 	const [template, setTemplate] = useState<PageTemplate>(page.template);
+	const [media, setMedia] = useState<MediaItem[]>(page.media ?? []);
 	useEffect(() => {
 		setSlug(page.slug);
 		setTitle(page.title);
 		setTemplate(page.template);
+		setMedia(page.media ?? []);
 	}, [page.slug, page.template, page.title]);
 
 	return (
@@ -530,13 +544,18 @@ function PageMetaCard({
 				<AdminButton
 					size="sm"
 					variant="primary"
-					onClick={() => onSave(page.id, { slug, title, template })}
+					onClick={() => onSave(page.id, { slug, title, template, media })}
 				>
 					Сохранить страницу
 				</AdminButton>
 				<AdminButton size="sm" variant="danger" onClick={() => onDelete(page.id)}>
 					Удалить страницу
 				</AdminButton>
+			</div>
+
+			<div className="mt-4">
+				<div className="text-sm font-semibold text-blue-800 mb-2">Медиа-полоса</div>
+				<MediaStripEditor value={media} onChange={setMedia} />
 			</div>
 		</div>
 	);
@@ -558,16 +577,19 @@ function TabEditor({
 		label?: string;
 		position?: number;
 		template?: ContentTemplate | null;
+		media?: MediaItem[];
 	}) => void;
 	onDelete: () => void;
 }) {
 	const [label, setLabel] = useState(tab.label);
 	const [position, setPosition] = useState(String(tab.position));
 	const [template, setTemplate] = useState<string>(tab.template ?? '');
+	const [media, setMedia] = useState<MediaItem[]>(tab.media ?? []);
 	useEffect(() => {
 		setLabel(tab.label);
 		setPosition(String(tab.position));
 		setTemplate(tab.template ?? '');
+		setMedia(tab.media ?? []);
 	}, [tab.label, tab.position, tab.template, tab.id]);
 
 	return (
@@ -599,6 +621,7 @@ function TabEditor({
 							label,
 							position: Number(position),
 							template: template === '' ? null : (template as ContentTemplate),
+							media,
 						})
 					}
 				>
@@ -623,6 +646,142 @@ function TabEditor({
 					))}
 				</select>
 			</label>
+
+			<div className="mt-3">
+				<div className="text-sm font-semibold text-blue-800 mb-2">Медиа-полоса вкладки</div>
+				<MediaStripEditor value={media} onChange={setMedia} />
+			</div>
+		</div>
+	);
+}
+
+function MediaStripEditor({
+	value,
+	onChange,
+}: {
+	value: MediaItem[];
+	onChange: (next: MediaItem[]) => void;
+}) {
+	const [open, setOpen] = useState(false);
+	const [items, setItems] = useState<MediaItem[]>(value ?? []);
+
+	useEffect(() => setItems(value ?? []), [value]);
+
+	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+
+	return (
+		<div className="rounded-2xl border-2 border-blue-50 bg-blue-50/30 p-3">
+			<div className="flex items-center justify-between gap-2 mb-3">
+				<div className="text-xs text-gray-500">
+					Выбрано: <span className="font-semibold">{items.length}</span>
+				</div>
+				<div className="flex gap-2">
+					<AdminButton size="sm" variant="secondary" onClick={() => setOpen(true)}>
+						+ Добавить
+					</AdminButton>
+					<AdminButton
+						size="sm"
+						variant="primary"
+						onClick={() => onChange(items)}
+						disabled={items === value}
+					>
+						Применить
+					</AdminButton>
+				</div>
+			</div>
+
+			<DndContext
+				sensors={sensors}
+				collisionDetection={closestCenter}
+				onDragEnd={(evt) => {
+					const activeId = String(evt.active.id);
+					const overId = evt.over?.id ? String(evt.over.id) : '';
+					if (!overId || activeId === overId) return;
+					const oldIndex = items.findIndex((x) => mediaKey(x) === activeId);
+					const newIndex = items.findIndex((x) => mediaKey(x) === overId);
+					if (oldIndex < 0 || newIndex < 0) return;
+					setItems(arrayMove(items, oldIndex, newIndex));
+				}}
+			>
+				<SortableContext
+					items={items.map(mediaKey)}
+					strategy={horizontalListSortingStrategy}
+				>
+					<div className="flex gap-2 overflow-x-auto pb-1">
+						{items.map((m) => (
+							<SortableMediaChip
+								key={mediaKey(m)}
+								item={m}
+								onRemove={() => setItems((prev) => prev.filter((x) => x !== m))}
+							/>
+						))}
+						{items.length === 0 && (
+							<div className="text-sm text-gray-400">Пока ничего не выбрано.</div>
+						)}
+					</div>
+				</SortableContext>
+			</DndContext>
+
+			<MediaBrowserModal
+				open={open}
+				initialSelected={items}
+				onClose={() => setOpen(false)}
+				onConfirm={(picked) => {
+					// добавляем новые, не теряя текущий порядок
+					setItems((prev) => {
+						const set = new Set(prev.map(mediaKey));
+						const add = picked.filter((p) => !set.has(mediaKey(p)));
+						return [...prev, ...add];
+					});
+				}}
+			/>
+		</div>
+	);
+}
+
+function mediaKey(m: MediaItem): string {
+	return `${m.kind}:${m.src}`;
+}
+
+function SortableMediaChip({
+	item,
+	onRemove,
+}: {
+	item: MediaItem;
+	onRemove: () => void;
+}) {
+	const id = mediaKey(item);
+	const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+	const style = { transform: CSS.Transform.toString(transform), transition };
+	return (
+		<div
+			ref={setNodeRef}
+			style={style}
+			className="flex items-center gap-2 rounded-2xl border-2 border-blue-100 bg-white px-3 py-2 shrink-0"
+		>
+			<button
+				type="button"
+				className="p-1 rounded-lg border border-blue-100 text-blue-500 hover:bg-blue-50 active:scale-95 transition-all touch-none"
+				{...attributes}
+				{...listeners}
+				aria-label="Перетащить"
+			>
+				<GripVertical className="w-4 h-4" />
+			</button>
+			<div className="min-w-0">
+				<div className="text-xs text-gray-400">{item.kind === 'photo' ? 'Фото' : 'Видео'}</div>
+				<div className="text-sm font-semibold text-blue-800 truncate max-w-64">
+					{item.title ?? item.src}
+				</div>
+			</div>
+			<button
+				type="button"
+				onClick={onRemove}
+				className="ml-1 p-1 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+				aria-label="Удалить из подборки"
+			>
+				<X className="w-4 h-4" />
+			</button>
 		</div>
 	);
 }
@@ -663,14 +822,14 @@ function BlockEditor({
 		<div className="border border-blue-100 rounded-xl p-3">
 			<div className="text-xs text-gray-400 mb-2">{parentLabel}</div>
 			<div className="grid grid-cols-[1fr_100px_auto_auto_auto] gap-2 items-end">
-				<label>
-					<span className={adminLabelClass}>Изображение</span>
-					<input
-						className={adminInputClass}
+				<div>
+					<ImagePathInput
+						label="Изображение"
 						value={img}
-						onChange={(e) => setImg(e.target.value)}
+						onChange={(next) => setImg(next)}
+						placeholder="например: pages/block.jpg"
 					/>
-				</label>
+				</div>
 				<label>
 					<span className={adminLabelClass}>Позиция</span>
 					<input

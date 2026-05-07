@@ -138,6 +138,38 @@ export class TeachersController {
 			next(err);
 		}
 	};
+
+	// PATCH /api/teachers/:section/reorder
+	reorder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+		const { section } = req.params;
+		if (!isValidSection(section)) {
+			next(
+				new HttpError(
+					400,
+					'Неверная секция. Используй: vov | afgan | olympcoch | olympstud | trainer',
+				),
+			);
+			return;
+		}
+
+		const orderedPositions = Array.isArray(req.body?.orderedPositions)
+			? req.body.orderedPositions
+			: null;
+		if (
+			!orderedPositions ||
+			!orderedPositions.every((n: unknown) => typeof n === 'number' && Number.isFinite(n))
+		) {
+			next(new HttpError(400, 'orderedPositions должен быть массивом чисел'));
+			return;
+		}
+
+		try {
+			await this.service.reorder(section, orderedPositions as number[]);
+			res.json({ success: true });
+		} catch (err) {
+			next(err);
+		}
+	};
 }
 
 function isTeacherPayload(value: unknown): value is {

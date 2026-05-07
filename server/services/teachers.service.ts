@@ -206,4 +206,34 @@ export class TeachersService {
 
 		return this.getAll(section);
 	}
+
+	async reorder(section: Section, orderedPositions: number[]): Promise<void> {
+		const positions = orderedPositions.map(Number).filter((n) => Number.isFinite(n));
+		if (positions.length === 0) return;
+
+		await this.prisma.$transaction(async (tx) => {
+			const existing = await tx.teachers.findMany({
+				where: { section, position: { in: positions } },
+				select: { position: true },
+			});
+			if (existing.length !== positions.length) {
+				throw new Error('Некоторые записи не найдены');
+			}
+
+			// временные позиции, чтобы не столкнуться на @@id([section, position])
+			for (const pos of positions) {
+				await tx.teachers.update({
+					where: { section_position: { section, position: pos } },
+					data: { position: -pos },
+				});
+			}
+
+			for (let i = 0; i < positions.length; i++) {
+				await tx.teachers.update({
+					where: { section_position: { section, position: -positions[i] } },
+					data: { position: i + 1 },
+				});
+			}
+		});
+	}
 }

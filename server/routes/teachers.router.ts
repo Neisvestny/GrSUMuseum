@@ -15,4 +15,5 @@ teachersRouter.get('/:section', controller.getAll);
 teachersRouter.post('/:section/reset', controller.reset);
 teachersRouter.post('/:section', controller.create);
 teachersRouter.put('/:section/:position', controller.update);
+teachersRouter.patch('/:section/reorder', controller.reorder);
 teachersRouter.delete('/:section/:position', controller.delete);

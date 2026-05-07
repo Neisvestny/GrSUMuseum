@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Rector } from '../../../../api/rectors';
 import AdminButton from '../ui/AdminButton';
 import { ConfirmDelete } from '../ui/ConfirmDelete';
@@ -12,9 +12,10 @@ type Props = {
 	onChanged?: () => void;
 	onUpdate: (id: number, data: Partial<Rector>) => Promise<void>;
 	onDelete: (id: number) => Promise<void>;
+	dragHandle?: ReactNode;
 };
 
-export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Props) {
+export default function RectorCard({ rector, onChanged, onUpdate, onDelete, dragHandle }: Props) {
 	const toast = useAdminToast();
 	const [editing, setEditing] = useState(false);
 	const [confirmDelete, setConfirmDelete] = useState(false);
@@ -68,6 +69,7 @@ export default function RectorCard({ rector, onChanged, onUpdate, onDelete }: Pr
 			className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden"
 		>
 			<div className="flex items-center gap-4 p-4">
+				{dragHandle && <div className="shrink-0">{dragHandle}</div>}
 				<div className="w-12 h-12 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
 					{rector.img ? (
 						<img

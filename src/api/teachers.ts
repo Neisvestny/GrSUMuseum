@@ -45,3 +45,13 @@ export async function deleteTeacher(section: TeacherSection, position: number): 
 export async function resetTeachers(section: TeacherSection): Promise<Teacher[]> {
 	return apiRequest<Teacher[]>(`/teachers/${section}/reset`, { method: 'POST' });
 }
+
+export async function reorderTeachers(
+	section: TeacherSection,
+	orderedPositions: number[],
+): Promise<void> {
+	await apiRequest<void>(`/teachers/${section}/reorder`, {
+		method: 'PATCH',
+		body: JSON.stringify({ orderedPositions }),
+	});
+}

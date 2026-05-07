@@ -42,11 +42,22 @@ export interface PageBlock {
 	paragraphs: PageParagraph[];
 }
 
+export type MediaItem =
+	| { kind: 'photo'; src: string; title?: string; description?: string }
+	| {
+			kind: 'video';
+			src: string;
+			title?: string;
+			description?: string;
+			is_external?: boolean;
+	  };
+
 export interface PageTab {
 	id: number;
 	position: number;
 	label: string;
 	template: ContentTemplate | null;
+	media?: MediaItem[];
 	blocks: PageBlock[];
 }
 
@@ -55,6 +66,7 @@ export interface PageDto {
 	slug: string;
 	title: string;
 	template: PageTemplate;
+	media?: MediaItem[];
 	tabs: PageTab[];
 	blocks: PageBlock[];
 }
@@ -63,12 +75,14 @@ export interface PageInput {
 	slug?: string;
 	title?: string;
 	template?: PageTemplate;
+	media?: MediaItem[];
 }
 
 export interface TabInput {
 	label?: string;
 	position?: number;
 	template?: ContentTemplate | null;
+	media?: MediaItem[];
 }
 
 export interface BlockInput {

@@ -1,6 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentProps } from 'react';
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import type { TeacherMutation, TeacherSection } from '../../../../api/teachers';
+import { reorderTeachers } from '../../../../api/teachers';
 import { useTeachers } from '../../../../hooks/useTeachers';
 import AdminButton from '../ui/AdminButton';
 import { useAdminToast } from '../ui/AdminToastContext';
@@ -13,10 +18,17 @@ type Props = { section: TeacherSection };
 export default function TeachersPanel({ section }: Props) {
 	const toast = useAdminToast();
 	const { teachers, loading, error, add, reset, reload } = useTeachers(section);
+	const [items, setItems] = useState(teachers);
 	const [adding, setAdding] = useState(false);
 	const [confirmReset, setConfirmReset] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [addErr, setAddErr] = useState<string | null>(null);
+
+	useEffect(() => {
+		setItems(teachers);
+	}, [teachers]);
+
+	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
 	const handleAdd = async (data: TeacherMutation) => {
 		setBusy(true);
@@ -143,15 +155,42 @@ export default function TeachersPanel({ section }: Props) {
 
 			<div className="flex flex-col gap-3">
 				<AnimatePresence>
-					{teachers.map((t) => (
-						<TeacherCard
-							key={`${section}:${t.name}:${t.role}:${t.img}:${t.desc}`}
-							teacher={t}
-							section={section}
-							maxId={teachers.length}
-							onChanged={reload}
-						/>
-					))}
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={(evt) => {
+							const activeId = evt.active.id as number;
+							const overId = evt.over?.id as number | undefined;
+							if (!overId || activeId === overId) return;
+							const oldIndex = items.findIndex((t) => t.id === activeId);
+							const newIndex = items.findIndex((t) => t.id === overId);
+							if (oldIndex < 0 || newIndex < 0) return;
+							const next = arrayMove(items, oldIndex, newIndex);
+							setItems(next);
+							void reorderTeachers(section, next.map((t) => t.id))
+								.then(() => reload())
+								.catch((e) =>
+									toast.error(
+										e instanceof Error ? e.message : 'Не удалось сохранить порядок',
+									),
+								);
+						}}
+					>
+						<SortableContext
+							items={items.map((t) => t.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							{items.map((t) => (
+								<SortableTeacherCard
+									key={t.id}
+									teacher={t}
+									section={section}
+									maxId={teachers.length}
+									onChanged={reload}
+								/>
+							))}
+						</SortableContext>
+					</DndContext>
 				</AnimatePresence>
 				{!loading && teachers.length === 0 && (
 					<div className="text-center text-gray-400 py-12 text-sm">
@@ -159,6 +198,34 @@ export default function TeachersPanel({ section }: Props) {
 					</div>
 				)}
 			</div>
+		</div>
+	);
+}
+
+function SortableTeacherCard(props: ComponentProps<typeof TeacherCard>) {
+	const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+		id: props.teacher.id,
+	});
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+	};
+	return (
+		<div ref={setNodeRef} style={style} className={isDragging ? 'opacity-70' : ''}>
+			<TeacherCard
+				{...props}
+				dragHandle={
+					<button
+						type="button"
+						className="p-2 rounded-xl border-2 border-blue-100 text-blue-500 hover:bg-blue-50 active:scale-95 transition-all touch-none"
+						{...attributes}
+						{...listeners}
+						aria-label="Перетащить"
+					>
+						<GripVertical className="w-4 h-4" />
+					</button>
+				}
+			/>
 		</div>
 	);
 }

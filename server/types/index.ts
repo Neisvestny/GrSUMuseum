@@ -81,15 +81,32 @@ export interface PageDto {
 	slug: string;
 	title: string;
 	template: PageTemplate;
+	media: MediaItem[];
 	tabs: Array<{
 		id: number;
 		position: number;
 		label: string;
 		template: ContentTemplate | null;
+		media: MediaItem[];
 		blocks: BlockDto[];
 	}>;
 	blocks: BlockDto[];
 }
+
+export type MediaItem =
+	| {
+			kind: 'photo';
+			src: string;
+			title?: string;
+			description?: string;
+	  }
+	| {
+			kind: 'video';
+			src: string;
+			title?: string;
+			description?: string;
+			is_external?: boolean;
+	  };
 
 export interface BlockDto {
 	id: number;

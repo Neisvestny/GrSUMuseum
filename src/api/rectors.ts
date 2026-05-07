@@ -38,6 +38,13 @@ export async function deleteRector(id: number): Promise<void> {
 	await apiRequest<void>(`/rectors/${id}`, { method: 'DELETE' });
 }
 
+export async function reorderRectors(orderedIds: number[]): Promise<void> {
+	await apiRequest<void>(`/rectors/reorder`, {
+		method: 'PATCH',
+		body: JSON.stringify({ orderedIds }),
+	});
+}
+
 function sanitize(data: Partial<Rector>): Partial<Rector> {
 	return {
 		...data,

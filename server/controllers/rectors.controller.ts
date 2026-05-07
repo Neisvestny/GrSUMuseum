@@ -92,6 +92,21 @@ export class RectorsController {
 			next(err);
 		}
 	};
+
+	// PATCH /api/rectors/reorder
+	reorder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+		const orderedIds = Array.isArray(req.body?.orderedIds) ? req.body.orderedIds : null;
+		if (!orderedIds || !orderedIds.every((n: unknown) => typeof n === 'number' && Number.isFinite(n))) {
+			next(new HttpError(400, 'orderedIds должен быть массивом чисел'));
+			return;
+		}
+		try {
+			await this.service.reorder(orderedIds as number[]);
+			res.json({ success: true });
+		} catch (err) {
+			next(err);
+		}
+	};
 }
 
 function isRectorPayload(value: unknown): boolean {

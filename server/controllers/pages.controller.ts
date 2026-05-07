@@ -309,6 +309,7 @@ function isPagePayload(value: unknown): value is {
 	slug?: string;
 	title?: string;
 	template?: 'tabs_alternating' | 'alternating_blocks' | 'text_image' | 'tabs_text_image';
+	media?: unknown;
 } {
 	if (typeof value !== 'object' || value === null) return false;
 	const data = value as Record<string, unknown>;
@@ -319,7 +320,8 @@ function isPagePayload(value: unknown): value is {
 			data.template === 'tabs_alternating' ||
 			data.template === 'alternating_blocks' ||
 			data.template === 'text_image' ||
-			data.template === 'tabs_text_image')
+			data.template === 'tabs_text_image') &&
+		(data.media === undefined || Array.isArray(data.media))
 	);
 }
 
@@ -327,6 +329,7 @@ function isTabPayload(value: unknown): value is {
 	label?: string;
 	position?: number;
 	template?: 'alternating_blocks' | 'text_image' | null;
+	media?: unknown;
 } {
 	if (typeof value !== 'object' || value === null) return false;
 	const data = value as Record<string, unknown>;
@@ -336,7 +339,8 @@ function isTabPayload(value: unknown): value is {
 		(data.template === undefined ||
 			data.template === null ||
 			data.template === 'alternating_blocks' ||
-			data.template === 'text_image')
+			data.template === 'text_image') &&
+		(data.media === undefined || Array.isArray(data.media))
 	);
 }
 

@@ -3,6 +3,7 @@ import { HttpError } from '../shared/errors';
 import type {
 	BlockDto,
 	ContentTemplate,
+	MediaItem,
 	PageBlockRow,
 	PageDto,
 	PageParagraphRow,
@@ -15,12 +16,14 @@ interface PageInput {
 	slug?: string;
 	title?: string;
 	template?: PageTemplate;
+	media?: unknown;
 }
 
 interface TabInput {
 	label?: string;
 	position?: number;
 	template?: ContentTemplate | null;
+	media?: unknown;
 }
 
 interface BlockInput {
@@ -65,6 +68,30 @@ function toPageRow(row: { id: number; slug: string; title: string; template: str
 	};
 }
 
+function normalizeMedia(raw: unknown): MediaItem[] {
+	if (!Array.isArray(raw)) return [];
+	const out: MediaItem[] = [];
+	for (const item of raw) {
+		if (typeof item !== 'object' || item === null) continue;
+		const v = item as Record<string, unknown>;
+		const kind = v.kind;
+		const src = typeof v.src === 'string' ? v.src.trim() : '';
+		if ((kind !== 'photo' && kind !== 'video') || !src) continue;
+		const title = typeof v.title === 'string' ? v.title : undefined;
+		const description = typeof v.description === 'string' ? v.description : undefined;
+		if (kind === 'photo') out.push({ kind, src, title, description });
+		else
+			out.push({
+				kind,
+				src,
+				title,
+				description,
+				is_external: typeof v.is_external === 'boolean' ? v.is_external : undefined,
+			});
+	}
+	return out;
+}
+
 export class PagesService {
 	constructor(private prisma: PrismaClient) {}
 
@@ -86,10 +113,12 @@ export class PagesService {
 	async getPageBySlug(slug: string): Promise<PageDto | null> {
 		const page = await this.prisma.pages.findUnique({
 			where: { slug: this.normalizePath(slug) },
-			select: { id: true, slug: true, title: true, template: true },
+			select: { id: true, slug: true, title: true, template: true, media: true },
 		});
 		if (!page) return null;
-		return this.assemblePage(toPageRow(page));
+		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
+			media: MediaItem[];
+		});
 	}
 
 	async getPageByPath(path: string): Promise<PageDto | null> {
@@ -97,33 +126,46 @@ export class PagesService {
 		if (!normalized) return null;
 		const page = await this.prisma.pages.findUnique({
 			where: { slug: normalized },
-			select: { id: true, slug: true, title: true, template: true },
+			select: { id: true, slug: true, title: true, template: true, media: true },
 		});
 		if (!page) return null;
-		return this.assemblePage(toPageRow(page));
+		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
+			media: MediaItem[];
+		});
 	}
 
 	async getPageById(id: number): Promise<PageDto | null> {
 		const page = await this.prisma.pages.findUnique({
 			where: { id },
-			select: { id: true, slug: true, title: true, template: true },
+			select: { id: true, slug: true, title: true, template: true, media: true },
 		});
 		if (!page) return null;
-		return this.assemblePage(toPageRow(page));
+		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
+			media: MediaItem[];
+		});
 	}
 
-	private async assemblePage(page: PageRow): Promise<PageDto> {
+	private async assemblePage(page: (PageRow & { media?: MediaItem[] }) | PageRow): Promise<PageDto> {
 		const [tabsRes, blocksRes] = await Promise.all([
 			this.prisma.page_tabs.findMany({
 				where: { page_id: page.id },
 				orderBy: { position: 'asc' },
-				select: { id: true, page_id: true, position: true, label: true, template: true },
+				select: {
+					id: true,
+					page_id: true,
+					position: true,
+					label: true,
+					template: true,
+					media: true,
+				},
 			}),
 			this.prisma.page_blocks.findMany({
 				where: {
 					OR: [{ page_id: page.id }, { page_tabs: { page_id: page.id } }],
 				},
-				orderBy: { position: 'asc' },
+				// position уникальна только внутри parent-а (страницы/вкладки),
+				// поэтому сортируем дополнительно уже после выборки внутри каждой группы.
+				orderBy: { id: 'asc' },
 				select: {
 					id: true,
 					page_id: true,
@@ -169,21 +211,33 @@ export class PagesService {
 			})),
 		});
 
-		const tabsDto = tabsRes.map((t) => ({
-			id: t.id,
-			position: t.position,
-			label: t.label,
-			template: rowContentTemplate(t.template),
-			blocks: blocksRes.filter((b) => b.tab_id === t.id).map(blockToDto),
-		}));
+		const tabsDto = tabsRes.map((t) => {
+			const blocks = blocksRes
+				.filter((b) => b.tab_id === t.id)
+				.sort((a, b) => a.position - b.position)
+				.map(blockToDto);
 
-		const directBlocks = blocksRes.filter((b) => b.page_id === page.id).map(blockToDto);
+			return {
+				id: t.id,
+				position: t.position,
+				label: t.label,
+				template: rowContentTemplate(t.template),
+				media: normalizeMedia(t.media),
+				blocks,
+			};
+		});
+
+		const directBlocks = blocksRes
+			.filter((b) => b.page_id === page.id)
+			.sort((a, b) => a.position - b.position)
+			.map(blockToDto);
 
 		return {
 			id: page.id,
 			slug: page.slug,
 			title: page.title,
 			template: page.template as PageTemplate,
+			media: normalizeMedia((page as { media?: unknown }).media),
 			tabs: tabsDto,
 			blocks: directBlocks,
 		};
@@ -201,6 +255,7 @@ export class PagesService {
 					slug,
 					title,
 					template: data.template ?? 'tabs_alternating',
+					media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue,
 				},
 				select: { id: true, slug: true, title: true, template: true },
 			});
@@ -225,6 +280,10 @@ export class PagesService {
 					slug: normalizedSlug,
 					title: data.title ?? undefined,
 					template: data.template ?? undefined,
+					media:
+						data.media !== undefined
+							? (normalizeMedia(data.media) as unknown as Prisma.InputJsonValue)
+							: undefined,
 				},
 				select: { id: true, slug: true, title: true, template: true },
 			});
@@ -287,6 +346,7 @@ export class PagesService {
 					position: insertPos,
 					label,
 					template: data.template ?? null,
+					media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue,
 				},
 				select: { id: true, page_id: true, position: true, label: true, template: true },
 			});
@@ -317,12 +377,15 @@ export class PagesService {
 				);
 			}
 
-			if (data.label !== undefined || data.template !== undefined) {
+			if (data.label !== undefined || data.template !== undefined || data.media !== undefined) {
 				await tx.page_tabs.update({
 					where: { id: tabId },
 					data: {
 						...(data.label !== undefined ? { label: data.label } : {}),
 						...(data.template !== undefined ? { template: data.template } : {}),
+						...(data.media !== undefined
+							? { media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue }
+							: {}),
 					},
 				});
 			}

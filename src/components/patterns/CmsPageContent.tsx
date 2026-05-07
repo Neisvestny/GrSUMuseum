@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ContentTemplate, PageBlock, PageDto } from '../../api/pages';
 import { EmptyState, ErrorState, LoadingState } from '../design-system/States';
 import TabsBar from '../design-system/TabsBar';
 import AlternatingBlocks from './AlternatingBlocks';
+import MediaStrip from './MediaStrip';
 import TextImagePanel from './TextImagePanel';
 
 type Props = {
@@ -59,6 +60,8 @@ export default function CmsPageContent({
 		? (selectedTab?.blocks ?? [])
 		: (page?.blocks ?? []);
 
+	const mediaToRender = showTabsBar ? (selectedTab?.media ?? []) : (page?.media ?? []);
+
 	if (loading) return <LoadingState />;
 	if (error) return <ErrorState text={error} />;
 	if (!page) return <EmptyState text={emptyText} />;
@@ -81,31 +84,51 @@ export default function CmsPageContent({
 					transition={{ duration: 0.2 }}
 					className="flex flex-col gap-8"
 				>
+					{mediaToRender.length > 0 && <MediaStrip items={mediaToRender} />}
 					{blocksToRender.length === 0 ? (
 						<EmptyState text={emptyText} />
 					) : (
-						blocksToRender.map((block) => {
-							const layout: ContentTemplate = block.template ?? sectionBase;
-							const text = block.paragraphs.map((p) => p.text).join('\n\n');
-							const preparedBlocks = [
-								{ img: block.img ?? undefined, text },
-							];
-							const firstText = text;
-							const firstImage = block.img ?? '';
+						(() => {
+							const blocksPrepared = blocksToRender.map((block) => ({
+								id: block.id,
+								layout: (block.template ?? sectionBase) as ContentTemplate,
+								text: block.paragraphs.map((p) => p.text).join('\n\n'),
+								img: block.img ?? undefined,
+							}));
 
-							return (
-								<Fragment key={block.id}>
-									{renderContentLayout({
-										layout,
-										title: page.title,
-										preparedBlocks,
-										firstText,
-										firstImage,
-										emptyText,
-									})}
-								</Fragment>
-							);
-						})
+							const out: ReactNode[] = [];
+							let acc: Array<{ text: string; img?: string }> = [];
+
+							const flushAcc = (key: string) => {
+								if (acc.length === 0) return;
+								out.push(<AlternatingBlocks key={key} blocks={acc} />);
+								acc = [];
+							};
+
+							for (const b of blocksPrepared) {
+								if (b.layout === 'alternating_blocks') {
+									acc.push({ text: b.text, img: b.img });
+									continue;
+								}
+
+								flushAcc(`alt:${b.id}`);
+								out.push(
+									<Fragment key={b.id}>
+										{renderContentLayout({
+											layout: b.layout,
+											title: page.title,
+											preparedBlocks: [{ img: b.img, text: b.text }],
+											firstText: b.text,
+											firstImage: b.img ?? '',
+											emptyText,
+										})}
+									</Fragment>,
+								);
+							}
+
+							flushAcc('alt:tail');
+							return <>{out}</>;
+						})()
 					)}
 				</motion.div>
 			</AnimatePresence>

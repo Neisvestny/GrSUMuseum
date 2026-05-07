@@ -15,4 +15,5 @@ rectorsRouter.get('/', controller.getAll);
 rectorsRouter.get('/:id', controller.getById);
 rectorsRouter.post('/', controller.create);
 rectorsRouter.put('/:id', controller.update);
+rectorsRouter.patch('/reorder', controller.reorder);
 rectorsRouter.delete('/:id', controller.delete);

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { Teacher, TeacherMutation, TeacherSection } from '../../../../api/teachers';
 import { useTeachers } from '../../../../hooks/useTeachers';
 import AdminButton from '../ui/AdminButton';
@@ -13,9 +13,10 @@ type Props = {
 	section: TeacherSection;
 	maxId: number;
 	onChanged: () => void;
+	dragHandle?: ReactNode;
 };
 
-export default function TeacherCard({ teacher, section, maxId, onChanged }: Props) {
+export default function TeacherCard({ teacher, section, maxId, onChanged, dragHandle }: Props) {
 	const toast = useAdminToast();
 	const { update, remove } = useTeachers(section);
 	const [editing, setEditing] = useState(false);
@@ -70,6 +71,7 @@ export default function TeacherCard({ teacher, section, maxId, onChanged }: Prop
 			className="bg-white rounded-2xl border-2 border-blue-100 shadow-sm overflow-hidden"
 		>
 			<div className="flex items-center gap-4 p-4">
+				{dragHandle && <div className="shrink-0">{dragHandle}</div>}
 				<div className="w-10 h-10 shrink-0 rounded-xl bg-blue-700 text-white flex items-center justify-center font-bold text-sm">
 					{teacher.id}
 				</div>
