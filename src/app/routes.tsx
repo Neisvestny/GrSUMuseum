@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react';
 import AdminPanel from '../pages/AdminPanel';
+import MemoryAfgan from '../pages/history/MemoryAfgan';
+import MemoryVov from '../pages/history/MemoryVov';
 import Rectors from '../pages/history/Rectors';
 import Home from '../pages/Home';
 import PathResolverPage from '../pages/PathResolverPage';
@@ -20,8 +22,8 @@ export const appRoutes: AppRoute[] = [
 	{ path: '/history/rectors', element: <Rectors /> },
 	{ path: '/history/rectors/:id', element: <RectorDetails /> },
 	// { path: '/history/memory', element: <Memory /> },
-	// { path: '/history/memory/afgan', element: <MemoryAfgan /> },
-	// { path: '/history/memory/vov', element: <MemoryVov /> },
+	{ path: '/history/memory/afgan', element: <MemoryAfgan /> },
+	{ path: '/history/memory/vov', element: <MemoryVov /> },
 	// { path: '/sport', element: <Sport /> },
 	// { path: '/sport/hall-of-fame', element: <HallOfFame /> },
 	// { path: '/sport/trainers', element: <Trainers /> },

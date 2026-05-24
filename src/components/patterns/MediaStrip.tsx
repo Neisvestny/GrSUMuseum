@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { MediaItem } from '../../api/pages';
+import type { MediaItem } from '../../types/document';
 
 function getYoutubeId(url: string): string | null {
 	const match = url.match(

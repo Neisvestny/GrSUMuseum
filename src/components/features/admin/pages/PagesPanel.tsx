@@ -1,65 +1,67 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-	createBlock,
+	autosaveDraft,
 	createPage,
-	createParagraph,
-	CONTENT_TEMPLATES,
-	createTab,
-	deleteBlock,
 	deletePage,
-	deleteParagraph,
-	deleteTab,
 	fetchPageById,
 	fetchPages,
-	PAGE_TEMPLATES,
-	updateBlock,
-	updatePage,
-	updateParagraph,
-	updateTab,
-	type PageBlock,
-	type PageDto,
-	type ContentTemplate,
+	publishPage,
+	fetchPageVersions,
+	updatePageMeta,
+	type DraftPage,
 	type PageSummary,
-	type PageTab,
-	type PageTemplate,
+	type PageVersionSummary,
 } from '../../../../api/pages';
+import { EMPTY_DOCUMENT, type PageDocument } from '../../../../types/document';
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
+import AdminCreateForm from '../ui/AdminCreateForm';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
-import ImagePathInput from '../ui/ImagePathInput';
 import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
-import type { MediaItem } from '../../../../api/pages';
-import MediaBrowserModal from '../media/MediaBrowserModal';
-import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
-import {
-	SortableContext,
-	arrayMove,
-	horizontalListSortingStrategy,
-	useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, X } from 'lucide-react';
+import DocumentEditor from './document-editor/DocumentEditor';
+import PageVersionsPanel from './PageVersionsPanel';
+import SlugPathSelect from './SlugPathSelect';
+
+const THEME_OPTIONS = [
+	{ value: 'default', label: 'По умолчанию' },
+	{ value: 'history', label: 'История' },
+	{ value: 'sport', label: 'Спорт' },
+];
 
 function errorMessage(error: unknown, fallback: string): string {
 	return error instanceof ApiError ? error.message : fallback;
+}
+
+function serializeDocument(doc: PageDocument): string {
+	return JSON.stringify(doc);
 }
 
 export default function PagesPanel() {
 	const toast = useAdminToast();
 	const [pages, setPages] = useState<PageSummary[]>([]);
 	const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
-	const [selectedPage, setSelectedPage] = useState<PageDto | null>(null);
+	const [draft, setDraft] = useState<DraftPage | null>(null);
+	const [document, setDocument] = useState<PageDocument>(EMPTY_DOCUMENT);
+	const [versions, setVersions] = useState<PageVersionSummary[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [saving, setSaving] = useState(false);
 	const [creating, setCreating] = useState(false);
 	const [newPageSlug, setNewPageSlug] = useState('');
 	const [newPageTitle, setNewPageTitle] = useState('');
-	const [newPageTemplate, setNewPageTemplate] = useState<PageTemplate>('tabs_alternating');
-	/** В какую вкладку кладём новый блок (если вкладки есть). */
-	const [newBlockTabId, setNewBlockTabId] = useState<number | null>(null);
+	const savedSnapshotRef = useRef(serializeDocument(EMPTY_DOCUMENT));
 
-	const loadPages = async () => {
+	const isDirty = useMemo(
+		() => serializeDocument(document) !== savedSnapshotRef.current,
+		[document],
+	);
+
+	const markSaved = useCallback((doc: PageDocument) => {
+		savedSnapshotRef.current = serializeDocument(doc);
+	}, []);
+
+	const loadPages = useCallback(async () => {
 		try {
 			setLoading(true);
 			setError(null);
@@ -67,7 +69,7 @@ export default function PagesPanel() {
 			setPages(list);
 			if (list.length === 0) {
 				setSelectedPageId(null);
-				setSelectedPage(null);
+				setDraft(null);
 				return;
 			}
 			const nextId =
@@ -75,881 +77,298 @@ export default function PagesPanel() {
 					? selectedPageId
 					: list[0].id;
 			setSelectedPageId(nextId);
-		} catch (error) {
-			const msg = errorMessage(error, 'Не удалось загрузить список страниц');
+		} catch (err) {
+			const msg = errorMessage(err, 'Не удалось загрузить список страниц');
 			setError(msg);
 			toast.error(msg);
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [selectedPageId, toast]);
 
-	const loadPage = async (pageId: number) => {
+	const loadDraft = useCallback(
+		async (pageId: number) => {
+			try {
+				setError(null);
+				const data = await fetchPageById(pageId);
+				const doc = data.draftDocument ?? EMPTY_DOCUMENT;
+				setDraft(data);
+				setDocument(doc);
+				markSaved(doc);
+				const v = await fetchPageVersions(data.slug);
+				setVersions(v);
+			} catch (err) {
+				const msg = errorMessage(err, 'Не удалось загрузить черновик');
+				setError(msg);
+				toast.error(msg);
+				setDraft(null);
+			}
+		},
+		[toast, markSaved],
+	);
+
+	const persistDraft = useCallback(async () => {
+		if (!draft) return false;
+		setSaving(true);
 		try {
-			setError(null);
-			setSelectedPage(await fetchPageById(pageId));
-		} catch (error) {
-			const msg = errorMessage(error, 'Не удалось загрузить данные страницы');
-			setError(msg);
-			toast.error(msg);
-			setSelectedPage(null);
+			const result = await autosaveDraft(draft.slug, document, draft.documentVersion);
+			const refreshed = await fetchPageById(draft.id);
+			const doc = refreshed.draftDocument ?? EMPTY_DOCUMENT;
+			setDraft(refreshed);
+			setDocument(doc);
+			markSaved(doc);
+			toast.success(`Черновик сохранён (версия ${result.documentVersion})`);
+			return true;
+		} catch (err) {
+			toast.error(errorMessage(err, 'Ошибка сохранения'));
+			return false;
+		} finally {
+			setSaving(false);
 		}
-	};
+	}, [draft, document, toast, markSaved]);
 
 	useEffect(() => {
 		void loadPages();
-	}, []);
+	}, [loadPages]);
 
 	useEffect(() => {
-		if (selectedPageId !== null) {
-			void loadPage(selectedPageId);
-		}
-	}, [selectedPageId]);
+		if (selectedPageId) void loadDraft(selectedPageId);
+	}, [selectedPageId, loadDraft]);
 
-	const tabs = selectedPage?.tabs ?? [];
+	const handleDocumentChange = (next: PageDocument) => {
+		setDocument(next);
+	};
 
-	useEffect(() => {
-		if (tabs.length === 0) {
-			setNewBlockTabId(null);
+	const handleDiscardChanges = () => {
+		if (!draft || !isDirty) return;
+		if (!confirm('Отменить все несохранённые правки и вернуть последний сохранённый черновик?')) {
 			return;
 		}
-		setNewBlockTabId((prev) => {
-			if (prev !== null && tabs.some((t) => t.id === prev)) return prev;
-			return tabs[0]?.id ?? null;
-		});
-	}, [selectedPageId, tabs]);
-	const directBlocks = selectedPage?.blocks ?? [];
+		const doc = draft.draftDocument ?? EMPTY_DOCUMENT;
+		setDocument(doc);
+		markSaved(doc);
+		toast.success('Изменения отменены');
+	};
 
-	const allBlocks = useMemo(
-		() => [
-			...directBlocks.map((block) => ({ block, parentLabel: 'Страница' })),
-			...tabs.flatMap((tab) =>
-				tab.blocks.map((block) => ({ block, parentLabel: `Вкладка: ${tab.label}` })),
-			),
-		],
-		[directBlocks, tabs],
-	);
-
-	const createNewPage = async () => {
+	const handlePublish = async () => {
+		if (!draft) return;
+		if (isDirty) {
+			const saveFirst = confirm(
+				'Есть несохранённые изменения. Сохранить черновик перед публикацией?',
+			);
+			if (saveFirst) {
+				const ok = await persistDraft();
+				if (!ok) return;
+			} else if (
+				!confirm('Опубликовать без сохранения текущих правок в черновике? На киоск уйдёт последний сохранённый черновик.')
+			) {
+				return;
+			}
+		}
+		setSaving(true);
 		try {
-			const page = await createPage({
-				slug: newPageSlug,
-				title: newPageTitle,
-				template: newPageTemplate,
-			});
+			await publishPage(draft.slug);
+			await loadDraft(draft.id);
+			toast.success('Страница опубликована');
+		} catch (err) {
+			toast.error(errorMessage(err, 'Ошибка публикации'));
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const handleRestoredFromVersion = (refreshed: DraftPage) => {
+		const doc = refreshed.draftDocument ?? EMPTY_DOCUMENT;
+		setDraft(refreshed);
+		setDocument(doc);
+		markSaved(doc);
+		void fetchPageVersions(refreshed.slug).then(setVersions);
+	};
+
+	const handleRevertToPublished = () => {
+		if (!draft?.publishedDocument) return;
+		setDocument(draft.publishedDocument);
+	};
+
+	const handleCreate = async () => {
+		const slug = newPageSlug.trim();
+		const title = newPageTitle.trim();
+		if (!slug) {
+			toast.error('Укажите путь страницы');
+			return;
+		}
+		if (!title) {
+			toast.error('Укажите заголовок');
+			return;
+		}
+		setCreating(true);
+		try {
+			const created = await createPage({ slug, title });
 			setNewPageSlug('');
 			setNewPageTitle('');
-			setNewPageTemplate('tabs_alternating');
-			setCreating(false);
 			await loadPages();
-			setSelectedPageId(page.id);
+			setSelectedPageId(created.id);
 			toast.success('Страница создана');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось создать страницу'));
+		} catch (err) {
+			toast.error(errorMessage(err, 'Не удалось создать страницу'));
+		} finally {
+			setCreating(false);
 		}
 	};
 
-	const savePageMeta = async (
-		id: number,
-		data: { slug?: string; title?: string; template?: PageTemplate; media?: MediaItem[] },
-	) => {
-		try {
-			await updatePage(id, data);
-			await loadPages();
-			await loadPage(id);
-			toast.success('Страница сохранена');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось сохранить страницу'));
-		}
-	};
-
-	const removePage = async (id: number) => {
-		try {
-			await deletePage(id);
-			await loadPages();
-			toast.success('Страница удалена');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось удалить страницу'));
-		}
-	};
-
-	const addTab = async () => {
-		if (!selectedPageId) return;
-		try {
-			await createTab(selectedPageId, { label: 'Новая вкладка' });
-			await loadPage(selectedPageId);
-			toast.success('Вкладка добавлена');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось добавить вкладку'));
-		}
-	};
-
-	const saveTab = async (
-		tabId: number,
-		data: { label?: string; position?: number; template?: ContentTemplate | null },
-	) => {
-		if (!selectedPageId) return;
-		try {
-			await updateTab(tabId, data);
-			await loadPage(selectedPageId);
-			toast.success('Вкладка сохранена');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось сохранить вкладку'));
-		}
-	};
-
-	const removeTab = async (tabId: number) => {
-		if (!selectedPageId) return;
-		try {
-			await deleteTab(tabId);
-			await loadPage(selectedPageId);
-			toast.success('Вкладка удалена');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось удалить вкладку'));
-		}
-	};
-
-	const addBlockToPage = async () => {
-		if (!selectedPageId) return;
-		try {
-			await createBlock({ page_id: selectedPageId, img: '' });
-			await loadPage(selectedPageId);
-			toast.success('Блок добавлен на страницу');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось добавить блок страницы'));
-		}
-	};
-
-	const addBlockToTab = async (tabId: number) => {
-		if (!selectedPageId) return;
-		try {
-			await createBlock({ tab_id: tabId, img: '' });
-			await loadPage(selectedPageId);
-			toast.success('Блок добавлен');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось добавить блок'));
-		}
-	};
-
-	const addBlockDefault = async () => {
-		if (!selectedPageId) return;
-		if (tabs.length > 0 && newBlockTabId !== null) {
-			await addBlockToTab(newBlockTabId);
-		} else {
-			await addBlockToPage();
-		}
-	};
-
-	const saveBlock = async (
-		blockId: number,
-		data: { img?: string | null; position?: number; template?: ContentTemplate | null },
-	) => {
-		if (!selectedPageId) return;
-		try {
-			await updateBlock(blockId, data);
-			await loadPage(selectedPageId);
-		} catch (error) {
-			setError(errorMessage(error, 'Не удалось сохранить блок'));
-		}
-	};
-
-	const removeBlock = async (blockId: number) => {
-		if (!selectedPageId) return;
-		try {
-			await deleteBlock(blockId);
-			await loadPage(selectedPageId);
-			toast.success('Блок удалён');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось удалить блок'));
-		}
-	};
-
-	const addParagraph = async (blockId: number) => {
-		if (!selectedPageId) return;
-		try {
-			await createParagraph(blockId, { text: 'Новый абзац' });
-			await loadPage(selectedPageId);
-			toast.success('Абзац добавлен');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось добавить абзац'));
-		}
-	};
-
-	const saveParagraph = async (
-		paragraphId: number,
-		data: { text?: string; position?: number },
-	) => {
-		if (!selectedPageId) return;
-		try {
-			await updateParagraph(paragraphId, data);
-			await loadPage(selectedPageId);
-			toast.success('Абзац сохранён');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось сохранить абзац'));
-		}
-	};
-
-	const removeParagraph = async (paragraphId: number) => {
-		if (!selectedPageId) return;
-		try {
-			await deleteParagraph(paragraphId);
-			await loadPage(selectedPageId);
-			toast.success('Абзац удалён');
-		} catch (error) {
-			toast.error(errorMessage(error, 'Не удалось удалить абзац'));
-		}
-	};
+	if (loading && pages.length === 0) {
+		return <p className="text-stone-500">Загрузка...</p>;
+	}
 
 	return (
-		<div className="grid grid-cols-[300px_1fr] gap-4">
-			<div className="bg-white border-2 border-blue-100 rounded-2xl p-4">
-				<div className="flex items-center justify-between mb-3">
-					<h3 className="text-blue-800 font-bold">Страницы</h3>
-					<AdminButton size="sm" variant="primary" onClick={() => setCreating((v) => !v)}>
-						{creating ? '✕' : '+'}
-					</AdminButton>
-				</div>
-				{creating && (
-					<div className="mb-3 flex flex-col gap-2">
-						<input
-							className={adminInputClass}
-							placeholder="slug: history/memory/vov"
-							value={newPageSlug}
-							onChange={(e) => setNewPageSlug(e.target.value)}
-						/>
-						<input
-							className={adminInputClass}
-							placeholder="Заголовок страницы"
-							value={newPageTitle}
-							onChange={(e) => setNewPageTitle(e.target.value)}
-						/>
-						<select
-							className={adminInputClass}
-							value={newPageTemplate}
-							onChange={(e) => setNewPageTemplate(e.target.value as PageTemplate)}
-						>
-							{PAGE_TEMPLATES.map((template) => (
-								<option key={template.value} value={template.value}>
-									{template.label}
-								</option>
-							))}
-						</select>
-						<AdminButton
-							size="sm"
-							variant="primary"
-							onClick={() => void createNewPage()}
-						>
-							Создать
-						</AdminButton>
-					</div>
-				)}
+		<div className="flex flex-col gap-6">
+			{error && <ErrorBox msg={error} />}
 
-				<div className="flex flex-col gap-2 max-h-[65vh] overflow-y-auto">
-					{pages.map((page) => (
-						<button
-							key={page.id}
-							onClick={() => setSelectedPageId(page.id)}
-							className={`w-full rounded-xl border-2 p-2 text-left ${
-								page.id === selectedPageId
-									? 'border-blue-700 bg-blue-50'
-									: 'border-blue-100 hover:border-blue-300'
-							}`}
-						>
-							<div className="text-xs text-gray-400">/{page.slug}</div>
-							<div className="text-sm text-blue-800 font-semibold">{page.title}</div>
-							<div className="text-xs text-blue-500 mt-0.5">
-								{templateLabel(page.template)}
-							</div>
-						</button>
-					))}
-				</div>
-			</div>
-
-			<div className="bg-white border-2 border-blue-100 rounded-2xl p-4 min-h-[420px]">
-				{loading && <div className="text-blue-600">Загрузка...</div>}
-				{error && (
-					<div className="mb-4">
-						<ErrorBox msg={error} />
-					</div>
-				)}
-				{!loading && !selectedPage && (
-					<div className="text-gray-500">Выберите страницу слева.</div>
-				)}
-
-				{selectedPage && (
-					<div className="flex flex-col gap-6">
-						<PageMetaCard
-							page={selectedPage}
-							onSave={savePageMeta}
-							onDelete={removePage}
-						/>
-
-						<div className="border-2 border-blue-50 rounded-xl p-3">
-							<div className="flex items-center justify-between mb-2">
-								<h4 className="font-semibold text-blue-800">Вкладки</h4>
-								<AdminButton size="sm" onClick={() => void addTab()}>
-									+ Вкладка
-								</AdminButton>
-							</div>
-							<div className="flex flex-col gap-2">
-								{tabs.map((tab) => (
-									<div
-										key={tab.id}
-										className="border border-blue-100 rounded-xl p-2"
-									>
-										<TabEditor
-											tab={tab}
-											maxPos={tabs.length}
-											onSave={(data) => saveTab(tab.id, data)}
-											onDelete={() => removeTab(tab.id)}
-										/>
-									</div>
-								))}
-								{tabs.length === 0 && (
-									<div className="text-gray-400 text-sm">
-										У страницы пока нет вкладок.
-									</div>
-								)}
-							</div>
-						</div>
-
-						<div className="border-2 border-blue-50 rounded-xl p-3">
-							<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2">
-								<h4 className="font-semibold text-blue-800">Блоки</h4>
-								<div className="flex flex-wrap items-center gap-2">
-									{tabs.length > 0 && newBlockTabId !== null && (
-										<label className="flex items-center gap-2 text-sm text-blue-800">
-											<span className={adminLabelClass}>Во вкладку</span>
-											<select
-												className={`${adminInputClass} min-w-40`}
-												value={newBlockTabId}
-												onChange={(e) =>
-													setNewBlockTabId(Number(e.target.value))
-												}
-											>
-												{tabs.map((tab) => (
-													<option key={tab.id} value={tab.id}>
-														{tab.label}
-													</option>
-												))}
-											</select>
-										</label>
-									)}
-									<AdminButton
-										size="sm"
-										variant="primary"
-										onClick={() => void addBlockDefault()}
-									>
-										+ Блок
-									</AdminButton>
-									{tabs.length > 0 && (
-										<AdminButton
-											size="sm"
-											variant="secondary"
-											onClick={() => void addBlockToPage()}
-										>
-											На страницу (без вкладки)
-										</AdminButton>
-									)}
-								</div>
-							</div>
-							<div className="flex flex-col gap-3">
-								{allBlocks.map(({ block, parentLabel }) => (
-									<BlockEditor
-										key={block.id}
-										block={block}
-										parentLabel={parentLabel}
-										maxPos={100}
-										onSave={(data) => saveBlock(block.id, data)}
-										onDelete={() => removeBlock(block.id)}
-										onAddParagraph={() => addParagraph(block.id)}
-										onSaveParagraph={saveParagraph}
-										onDeleteParagraph={removeParagraph}
-									/>
-								))}
-								{allBlocks.length === 0 && (
-									<div className="text-gray-400 text-sm">Блоков пока нет.</div>
-								)}
-							</div>
-						</div>
-					</div>
-				)}
-			</div>
-		</div>
-	);
-}
-
-function PageMetaCard({
-	page,
-	onSave,
-	onDelete,
-}: {
-	page: PageDto;
-	onSave: (
-		id: number,
-		data: { slug?: string; title?: string; template?: PageTemplate; media?: MediaItem[] },
-	) => void;
-	onDelete: (id: number) => void;
-}) {
-	const [slug, setSlug] = useState(page.slug);
-	const [title, setTitle] = useState(page.title);
-	const [template, setTemplate] = useState<PageTemplate>(page.template);
-	const [media, setMedia] = useState<MediaItem[]>(page.media ?? []);
-	useEffect(() => {
-		setSlug(page.slug);
-		setTitle(page.title);
-		setTemplate(page.template);
-		setMedia(page.media ?? []);
-	}, [page.slug, page.template, page.title]);
-
-	return (
-		<div className="border-2 border-blue-50 rounded-xl p-3">
-			<h4 className="font-semibold text-blue-800 mb-2">Метаданные страницы</h4>
-			<p className="text-xs text-gray-500 mb-2">
-				Базовый шаблон задаёт вид контента, если у вкладки или блока не выбран свой.
-			</p>
-			<div className="grid grid-cols-2 gap-2">
-				<label>
-					<span className={adminLabelClass}>Slug</span>
-					<input
-						className={adminInputClass}
-						value={slug}
-						onChange={(e) => setSlug(e.target.value)}
-					/>
-				</label>
-				<label>
-					<span className={adminLabelClass}>Заголовок</span>
-					<input
-						className={adminInputClass}
-						value={title}
-						onChange={(e) => setTitle(e.target.value)}
-					/>
-				</label>
-				<label>
-					<span className={adminLabelClass}>Базовый шаблон</span>
-					<select
-						className={adminInputClass}
-						value={template}
-						onChange={(e) => setTemplate(e.target.value as PageTemplate)}
-					>
-						{PAGE_TEMPLATES.map((item) => (
-							<option key={item.value} value={item.value}>
-								{item.label}
-							</option>
-						))}
-					</select>
-				</label>
-			</div>
-			<div className="flex gap-2 mt-3">
-				<AdminButton
-					size="sm"
-					variant="primary"
-					onClick={() => onSave(page.id, { slug, title, template, media })}
-				>
-					Сохранить страницу
-				</AdminButton>
-				<AdminButton size="sm" variant="danger" onClick={() => onDelete(page.id)}>
-					Удалить страницу
-				</AdminButton>
-			</div>
-
-			<div className="mt-4">
-				<div className="text-sm font-semibold text-blue-800 mb-2">Медиа-полоса</div>
-				<MediaStripEditor value={media} onChange={setMedia} />
-			</div>
-		</div>
-	);
-}
-
-function templateLabel(template: PageTemplate): string {
-	return PAGE_TEMPLATES.find((item) => item.value === template)?.label ?? template;
-}
-
-function TabEditor({
-	tab,
-	maxPos,
-	onSave,
-	onDelete,
-}: {
-	tab: PageTab;
-	maxPos: number;
-	onSave: (data: {
-		label?: string;
-		position?: number;
-		template?: ContentTemplate | null;
-		media?: MediaItem[];
-	}) => void;
-	onDelete: () => void;
-}) {
-	const [label, setLabel] = useState(tab.label);
-	const [position, setPosition] = useState(String(tab.position));
-	const [template, setTemplate] = useState<string>(tab.template ?? '');
-	const [media, setMedia] = useState<MediaItem[]>(tab.media ?? []);
-	useEffect(() => {
-		setLabel(tab.label);
-		setPosition(String(tab.position));
-		setTemplate(tab.template ?? '');
-		setMedia(tab.media ?? []);
-	}, [tab.label, tab.position, tab.template, tab.id]);
-
-	return (
-		<div className="flex flex-col gap-2">
-			<div className="grid grid-cols-[1fr_100px_auto_auto] gap-2 items-end">
-				<label>
-					<span className={adminLabelClass}>Название вкладки</span>
-					<input
-						className={adminInputClass}
-						value={label}
-						onChange={(e) => setLabel(e.target.value)}
-					/>
-				</label>
-				<label>
-					<span className={adminLabelClass}>Позиция</span>
-					<input
-						type="number"
-						min={1}
-						max={maxPos}
-						className={adminInputClass}
-						value={position}
-						onChange={(e) => setPosition(e.target.value)}
-					/>
-				</label>
-				<AdminButton
-					size="sm"
-					onClick={() =>
-						onSave({
-							label,
-							position: Number(position),
-							template: template === '' ? null : (template as ContentTemplate),
-							media,
-						})
-					}
-				>
-					Сохранить
-				</AdminButton>
-				<AdminButton size="sm" variant="danger" onClick={onDelete}>
-					Удалить
-				</AdminButton>
-			</div>
-			<label className="block max-w-md">
-				<span className={adminLabelClass}>Шаблон контента вкладки</span>
-				<select
-					className={adminInputClass}
-					value={template}
-					onChange={(e) => setTemplate(e.target.value)}
-				>
-					<option value="">Как у страницы (базовый)</option>
-					{CONTENT_TEMPLATES.map((item) => (
-						<option key={item.value} value={item.value}>
-							{item.label}
-						</option>
-					))}
-				</select>
-			</label>
-
-			<div className="mt-3">
-				<div className="text-sm font-semibold text-blue-800 mb-2">Медиа-полоса вкладки</div>
-				<MediaStripEditor value={media} onChange={setMedia} />
-			</div>
-		</div>
-	);
-}
-
-function MediaStripEditor({
-	value,
-	onChange,
-}: {
-	value: MediaItem[];
-	onChange: (next: MediaItem[]) => void;
-}) {
-	const [open, setOpen] = useState(false);
-	const [items, setItems] = useState<MediaItem[]>(value ?? []);
-
-	useEffect(() => setItems(value ?? []), [value]);
-
-	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
-
-	return (
-		<div className="rounded-2xl border-2 border-blue-50 bg-blue-50/30 p-3">
-			<div className="flex items-center justify-between gap-2 mb-3">
-				<div className="text-xs text-gray-500">
-					Выбрано: <span className="font-semibold">{items.length}</span>
-				</div>
-				<div className="flex gap-2">
-					<AdminButton size="sm" variant="secondary" onClick={() => setOpen(true)}>
-						+ Добавить
-					</AdminButton>
-					<AdminButton
-						size="sm"
-						variant="primary"
-						onClick={() => onChange(items)}
-						disabled={items === value}
-					>
-						Применить
-					</AdminButton>
-				</div>
-			</div>
-
-			<DndContext
-				sensors={sensors}
-				collisionDetection={closestCenter}
-				onDragEnd={(evt) => {
-					const activeId = String(evt.active.id);
-					const overId = evt.over?.id ? String(evt.over.id) : '';
-					if (!overId || activeId === overId) return;
-					const oldIndex = items.findIndex((x) => mediaKey(x) === activeId);
-					const newIndex = items.findIndex((x) => mediaKey(x) === overId);
-					if (oldIndex < 0 || newIndex < 0) return;
-					setItems(arrayMove(items, oldIndex, newIndex));
-				}}
+			<AdminCreateForm
+				onSubmit={handleCreate}
+				disabled={creating}
+				submitLabel="Создать страницу"
 			>
-				<SortableContext
-					items={items.map(mediaKey)}
-					strategy={horizontalListSortingStrategy}
-				>
-					<div className="flex gap-2 overflow-x-auto pb-1">
-						{items.map((m) => (
-							<SortableMediaChip
-								key={mediaKey(m)}
-								item={m}
-								onRemove={() => setItems((prev) => prev.filter((x) => x !== m))}
-							/>
-						))}
-						{items.length === 0 && (
-							<div className="text-sm text-gray-400">Пока ничего не выбрано.</div>
-						)}
-					</div>
-				</SortableContext>
-			</DndContext>
-
-			<MediaBrowserModal
-				open={open}
-				initialSelected={items}
-				onClose={() => setOpen(false)}
-				onConfirm={(picked) => {
-					// добавляем новые, не теряя текущий порядок
-					setItems((prev) => {
-						const set = new Set(prev.map(mediaKey));
-						const add = picked.filter((p) => !set.has(mediaKey(p)));
-						return [...prev, ...add];
-					});
-				}}
-			/>
-		</div>
-	);
-}
-
-function mediaKey(m: MediaItem): string {
-	return `${m.kind}:${m.src}`;
-}
-
-function SortableMediaChip({
-	item,
-	onRemove,
-}: {
-	item: MediaItem;
-	onRemove: () => void;
-}) {
-	const id = mediaKey(item);
-	const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-	const style = { transform: CSS.Transform.toString(transform), transition };
-	return (
-		<div
-			ref={setNodeRef}
-			style={style}
-			className="flex items-center gap-2 rounded-2xl border-2 border-blue-100 bg-white px-3 py-2 shrink-0"
-		>
-			<button
-				type="button"
-				className="p-1 rounded-lg border border-blue-100 text-blue-500 hover:bg-blue-50 active:scale-95 transition-all touch-none"
-				{...attributes}
-				{...listeners}
-				aria-label="Перетащить"
-			>
-				<GripVertical className="w-4 h-4" />
-			</button>
-			<div className="min-w-0">
-				<div className="text-xs text-gray-400">{item.kind === 'photo' ? 'Фото' : 'Видео'}</div>
-				<div className="text-sm font-semibold text-blue-800 truncate max-w-64">
-					{item.title ?? item.src}
-				</div>
-			</div>
-			<button
-				type="button"
-				onClick={onRemove}
-				className="ml-1 p-1 rounded-lg border border-red-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
-				aria-label="Удалить из подборки"
-			>
-				<X className="w-4 h-4" />
-			</button>
-		</div>
-	);
-}
-
-function BlockEditor({
-	block,
-	parentLabel,
-	maxPos,
-	onSave,
-	onDelete,
-	onAddParagraph,
-	onSaveParagraph,
-	onDeleteParagraph,
-}: {
-	block: PageBlock;
-	parentLabel: string;
-	maxPos: number;
-	onSave: (data: {
-		img?: string | null;
-		position?: number;
-		template?: ContentTemplate | null;
-	}) => void;
-	onDelete: () => void;
-	onAddParagraph: () => void;
-	onSaveParagraph: (paragraphId: number, data: { text?: string; position?: number }) => void;
-	onDeleteParagraph: (paragraphId: number) => void;
-}) {
-	const [img, setImg] = useState(block.img ?? '');
-	const [position, setPosition] = useState(String(block.position));
-	const [template, setTemplate] = useState<string>(block.template ?? '');
-	useEffect(() => {
-		setImg(block.img ?? '');
-		setPosition(String(block.position));
-		setTemplate(block.template ?? '');
-	}, [block.img, block.position, block.template, block.id]);
-
-	return (
-		<div className="border border-blue-100 rounded-xl p-3">
-			<div className="text-xs text-gray-400 mb-2">{parentLabel}</div>
-			<div className="grid grid-cols-[1fr_100px_auto_auto_auto] gap-2 items-end">
+				<SlugPathSelect value={newPageSlug} onChange={setNewPageSlug} mode="create" />
 				<div>
-					<ImagePathInput
-						label="Изображение"
-						value={img}
-						onChange={(next) => setImg(next)}
-						placeholder="например: pages/block.jpg"
+					<label className={adminLabelClass}>Заголовок</label>
+					<input
+						className={adminInputClass}
+						value={newPageTitle}
+						onChange={(e) => setNewPageTitle(e.target.value)}
+						placeholder="Название страницы"
 					/>
 				</div>
-				<label>
-					<span className={adminLabelClass}>Позиция</span>
-					<input
-						type="number"
-						min={1}
-						max={maxPos}
-						className={adminInputClass}
-						value={position}
-						onChange={(e) => setPosition(e.target.value)}
-					/>
-				</label>
-				<AdminButton
-					size="sm"
-					onClick={() =>
-						onSave({
-							img,
-							position: Number(position),
-							template: template === '' ? null : (template as ContentTemplate),
-						})
-					}
-				>
-					Сохранить
-				</AdminButton>
-				<AdminButton size="sm" onClick={onAddParagraph}>
-					+ Абзац
-				</AdminButton>
-				<AdminButton size="sm" variant="danger" onClick={onDelete}>
-					Удалить
-				</AdminButton>
-			</div>
+			</AdminCreateForm>
 
-			<label className="block max-w-md mt-2">
-				<span className={adminLabelClass}>Шаблон блока</span>
-				<select
-					className={adminInputClass}
-					value={template}
-					onChange={(e) => setTemplate(e.target.value)}
-				>
-					<option value="">Как у вкладки / страницы</option>
-					{CONTENT_TEMPLATES.map((item) => (
-						<option key={item.value} value={item.value}>
-							{item.label}
-						</option>
+			<div className="flex gap-6 flex-col lg:flex-row">
+				<ul className="lg:w-56 shrink-0 space-y-1">
+					{pages.map((p) => (
+						<li key={p.id}>
+							<button
+								type="button"
+								className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+									p.id === selectedPageId
+										? 'bg-blue-100 text-blue-900'
+										: 'hover:bg-stone-100'
+								}`}
+								onClick={() => setSelectedPageId(p.id)}
+							>
+								{p.title}
+								<span className="block text-xs text-stone-500">{p.slug}</span>
+							</button>
+						</li>
 					))}
-				</select>
-			</label>
+				</ul>
 
-			<div className="mt-2 flex flex-col gap-2">
-				{block.paragraphs.map((paragraph) => (
-					<ParagraphEditor
-						key={paragraph.id}
-						id={paragraph.id}
-						initialText={paragraph.text}
-						initialPosition={paragraph.position}
-						maxPos={block.paragraphs.length}
-						onSave={onSaveParagraph}
-						onDelete={onDeleteParagraph}
-					/>
-				))}
-				{block.paragraphs.length === 0 && (
-					<div className="text-gray-400 text-sm">У блока пока нет абзацев.</div>
+				{draft && (
+					<div className="flex-1 min-w-0 space-y-4">
+						<div className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 flex flex-wrap gap-3 items-center">
+							<div className="flex flex-col gap-0.5">
+								<span className="text-sm font-medium text-stone-800">
+									Черновик · v{draft.documentVersion}
+								</span>
+								<span className="text-xs text-stone-500">
+									{draft.publishedDocument
+										? 'На киоске опубликована версия'
+										: 'На киоске ещё ничего не опубликовано'}
+									{isDirty && ' · есть несохранённые правки'}
+								</span>
+							</div>
+							<div className="flex-1" />
+							<AdminButton
+								type="button"
+								onClick={() => void persistDraft()}
+								disabled={saving || !isDirty}
+							>
+								Сохранить черновик
+							</AdminButton>
+							<AdminButton
+								type="button"
+								variant="secondary"
+								onClick={handleDiscardChanges}
+								disabled={saving || !isDirty}
+							>
+								Отменить правки
+							</AdminButton>
+							<AdminButton type="button" onClick={() => void handlePublish()} disabled={saving}>
+								Опубликовать
+							</AdminButton>
+							<AdminButton
+								type="button"
+								variant="danger"
+								onClick={() => {
+									if (!confirm('Удалить страницу?')) return;
+									void deletePage(draft.id).then(() => loadPages());
+								}}
+							>
+								Удалить
+							</AdminButton>
+						</div>
+
+						<div className="grid gap-3 sm:grid-cols-2">
+							<div>
+								<label className={adminLabelClass}>Заголовок</label>
+								<input
+									className={adminInputClass}
+									defaultValue={draft.title}
+									onBlur={(e) => {
+										void updatePageMeta(draft.id, { title: e.target.value }).then(
+											loadPages,
+										);
+									}}
+								/>
+							</div>
+							<div>
+								<label className={adminLabelClass}>Тема оформления</label>
+								<select
+									className={adminInputClass}
+									defaultValue={draft.themeKey}
+									onChange={(e) => {
+										void updatePageMeta(draft.id, {
+											themeKey: e.target.value,
+										}).then(() => loadDraft(draft.id));
+									}}
+								>
+									{THEME_OPTIONS.map((o) => (
+										<option key={o.value} value={o.value}>
+											{o.label}
+										</option>
+									))}
+								</select>
+							</div>
+						</div>
+
+						<div>
+							<label className={adminLabelClass}>Путь (slug)</label>
+							<SlugPathSelect
+								value={draft.slug}
+								onChange={(slug) => {
+									void updatePageMeta(draft.id, { slug }).then(() => {
+										void loadPages();
+										void loadDraft(draft.id);
+									});
+								}}
+								mode="edit"
+								currentSlug={draft.slug}
+							/>
+						</div>
+
+						<PageVersionsPanel
+							draft={draft}
+							versions={versions}
+							saving={saving}
+							onRestored={handleRestoredFromVersion}
+							onRevertToPublished={handleRevertToPublished}
+						/>
+
+						<DocumentEditor
+							document={document}
+							pageTitle={draft.title}
+							onChange={handleDocumentChange}
+						/>
+					</div>
 				)}
-			</div>
-		</div>
-	);
-}
-
-function ParagraphEditor({
-	id,
-	initialText,
-	initialPosition,
-	maxPos,
-	onSave,
-	onDelete,
-}: {
-	id: number;
-	initialText: string;
-	initialPosition: number;
-	maxPos: number;
-	onSave: (id: number, data: { text?: string; position?: number }) => void;
-	onDelete: (id: number) => void;
-}) {
-	const [text, setText] = useState(initialText);
-	const [position, setPosition] = useState(String(initialPosition));
-	useEffect(() => {
-		setText(initialText);
-		setPosition(String(initialPosition));
-	}, [initialPosition, initialText]);
-
-	return (
-		<div className="border border-gray-100 rounded-xl p-2">
-			<div className="grid grid-cols-[1fr_100px_auto_auto] gap-2 items-end">
-				<label>
-					<span className={adminLabelClass}>Текст абзаца</span>
-					<textarea
-						className={`${adminInputClass} resize-y min-h-16`}
-						value={text}
-						onChange={(e) => setText(e.target.value)}
-					/>
-				</label>
-				<label>
-					<span className={adminLabelClass}>Позиция</span>
-					<input
-						type="number"
-						min={1}
-						max={maxPos}
-						className={adminInputClass}
-						value={position}
-						onChange={(e) => setPosition(e.target.value)}
-					/>
-				</label>
-				<AdminButton
-					size="sm"
-					onClick={() => onSave(id, { text, position: Number(position) })}
-				>
-					Сохранить
-				</AdminButton>
-				<AdminButton size="sm" variant="danger" onClick={() => onDelete(id)}>
-					Удалить
-				</AdminButton>
 			</div>
 		</div>
 	);

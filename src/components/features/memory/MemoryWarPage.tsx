@@ -2,8 +2,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import * as pdfjsLib from 'pdfjs-dist';
 import React, { useEffect, useRef, useState } from 'react';
 import HTMLFlipBook from 'react-pageflip';
-import type { TeacherSection } from '../../../api/teachers';
-import { useTeachers } from '../../../hooks/useTeachers';
+import type { PeopleRoleSlug } from '../../../lib/people-roles';
+import { personToEntityItem } from '../../../lib/person-display';
+import { usePeopleByRole } from '../../../hooks/usePeople';
 import MainLayout from '../../../layouts/MainLayout';
 import { SurfaceCard } from '../../design-system/Card';
 import TabsBar from '../../design-system/TabsBar';
@@ -18,15 +19,15 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 type Props = {
 	pageTitle: string;
 	bookTabLabel: string;
-	teachersSection: TeacherSection;
+	peopleRole: PeopleRoleSlug;
 	coverTitle: string;
 };
 
-function TeachersTab({ section }: { section: TeacherSection }) {
-	const { teachers, loading, error } = useTeachers(section);
+function TeachersTab({ role }: { role: PeopleRoleSlug }) {
+	const { people, loading, error } = usePeopleByRole(role);
 	return (
 		<EntityListDetail
-			items={teachers}
+			items={people.map(personToEntityItem)}
 			loading={loading}
 			error={error}
 			emptyText="Преподаватели не добавлены"
@@ -218,7 +219,7 @@ type PageFlipBridge = {
 export default function MemoryWarPage({
 	pageTitle,
 	bookTabLabel,
-	teachersSection,
+	peopleRole,
 	coverTitle,
 }: Props) {
 	const tabs = [
@@ -240,7 +241,7 @@ export default function MemoryWarPage({
 					className="flex-1 flex flex-col min-h-0"
 				>
 					{activeTab === 'teachers' ? (
-						<TeachersTab section={teachersSection} />
+						<TeachersTab role={peopleRole} />
 					) : (
 						<SurfaceCard className="h-full p-8">
 							<BookReader coverTitle={coverTitle} />

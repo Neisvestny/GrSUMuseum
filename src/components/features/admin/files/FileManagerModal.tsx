@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { FileManagerEntry } from '../../../../api/files';
+import type { MediaBrowseEntry } from '../../../../api/media';
 import AdminButton from '../ui/AdminButton';
 import FileManager from './FileManager';
 
@@ -12,7 +12,7 @@ export default function FileManagerModal({
 	open: boolean;
 	title?: string;
 	onClose: () => void;
-	onPick: (url: string, entry: FileManagerEntry) => void;
+	onPick: (url: string, entry: MediaBrowseEntry) => void;
 }) {
 	useEffect(() => {
 		if (!open) return;
@@ -46,6 +46,7 @@ export default function FileManagerModal({
 					</div>
 					<div className="p-4">
 						<FileManager
+							initialRoot="images"
 							onPick={(url, entry) => {
 								onPick(url, entry);
 								onClose();

@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useRector } from '../hooks/useRector';
+import { usePerson } from '../hooks/usePeople';
 import MainLayout from '../layouts/MainLayout';
 
 export default function RectorDetails() {
 	const { id } = useParams<{ id: string }>();
-	const rectorId = useMemo(() => (id ? Number(id) : null), [id]);
-	const { rector, loading, error } = useRector(rectorId);
+	const personId = useMemo(() => (id ? Number(id) : null), [id]);
+	const { person, loading, error } = usePerson(personId);
 
 	if (loading) {
 		return (
@@ -18,7 +18,7 @@ export default function RectorDetails() {
 		);
 	}
 
-	if (error || !rector) {
+	if (error || !person) {
 		return (
 			<MainLayout title="Ректор">
 				<div className="flex items-center justify-center h-64 text-red-500 text-lg">
@@ -29,15 +29,14 @@ export default function RectorDetails() {
 	}
 
 	return (
-		<MainLayout title={rector.name}>
+		<MainLayout title={person.displayName}>
 			<div className="max-w-4xl mx-auto flex flex-col gap-10 pb-10">
-				{/* Шапка */}
 				<div className="flex flex-col md:flex-row gap-8 items-start bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm">
 					<div className="w-48 h-60 shrink-0 rounded-2xl overflow-hidden border-2 border-blue-100 bg-blue-50">
-						{rector.img ? (
+						{person.img ? (
 							<img
-								src={rector.img}
-								alt={rector.name}
+								src={person.img}
+								alt={person.displayName}
 								className="w-full h-full object-cover"
 								onError={(e) => {
 									(e.target as HTMLImageElement).style.display = 'none';
@@ -51,35 +50,33 @@ export default function RectorDetails() {
 					</div>
 					<div className="flex flex-col gap-3">
 						<h1 className="text-3xl font-bold text-blue-800 leading-tight">
-							{rector.name}
+							{person.displayName}
 						</h1>
-						<p className="text-blue-500 font-semibold text-lg">{rector.years}</p>
-						{rector.description && (
+						<p className="text-blue-500 font-semibold text-lg">{person.yearsLabel}</p>
+						{person.shortDescription && (
 							<p className="text-gray-600 italic text-base leading-relaxed">
-								{rector.description}
+								{person.shortDescription}
 							</p>
 						)}
 					</div>
 				</div>
 
-				{/* Биография */}
-				{rector.full_text && (
+				{person.fullDescription && (
 					<div className="bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-8 shadow-sm">
 						<h2 className="text-xl font-bold text-blue-700 mb-4">
 							Биография и достижения
 						</h2>
 						<div className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-							{rector.full_text}
+							{person.fullDescription}
 						</div>
 					</div>
 				)}
 
-				{/* Галерея */}
-				{rector.images?.length > 0 && (
+				{person.images.length > 0 && (
 					<div>
 						<h2 className="text-xl font-bold text-blue-700 mb-4">Фотогалерея</h2>
 						<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-							{rector.images.map((url, i) => (
+							{person.images.map((url, i) => (
 								<div
 									key={i}
 									className="rounded-xl overflow-hidden border-2 border-blue-100 aspect-video bg-blue-50"
@@ -98,24 +95,23 @@ export default function RectorDetails() {
 					</div>
 				)}
 
-				{/* Документы */}
-				{rector.files?.length > 0 && (
+				{person.files.length > 0 && (
 					<div className="bg-blue-50/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 p-6">
 						<h2 className="text-xl font-bold text-blue-800 mb-4">
 							Документы и материалы
 						</h2>
 						<div className="flex flex-col gap-3">
-							{rector.files.map((file, i) => (
+							{person.files.map((file, i) => (
 								<a
 									key={i}
-									href={file.url}
+									href={file.src}
 									target="_blank"
 									rel="noopener noreferrer"
 									className="flex items-center gap-3 bg-white p-4 rounded-xl border-2 border-blue-100 hover:border-blue-400 hover:shadow-md transition-all duration-200"
 								>
 									<span className="text-2xl">📄</span>
 									<span className="font-semibold text-blue-700">
-										{file.name || file.url}
+										{file.title || file.src}
 									</span>
 									<span className="ml-auto text-blue-400 text-sm">↗</span>
 								</a>

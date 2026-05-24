@@ -5,7 +5,7 @@ import {
 	type GalleryPhoto,
 	type GalleryVideo,
 } from '../../../../api/gallery';
-import type { MediaItem } from '../../../../api/pages';
+import type { MediaItem } from '../../../../types/document';
 import AdminButton from '../ui/AdminButton';
 
 type MediaChoice = MediaItem & { key: string };

@@ -1,193 +1,124 @@
 import { apiRequest } from '../shared/api/client';
+import type { PageDocument } from '../types/document';
 
 export interface PageSummary {
 	id: number;
 	slug: string;
 	title: string;
-	template: PageTemplate;
+	themeKey: string;
+	sidebarEnabled: boolean;
+	hasPublished: boolean;
+	documentVersion: number;
 }
 
-export type PageTemplate =
-	| 'tabs_alternating'
-	| 'alternating_blocks'
-	| 'text_image'
-	| 'tabs_text_image';
-
-export const PAGE_TEMPLATES: Array<{ value: PageTemplate; label: string }> = [
-	{ value: 'tabs_alternating', label: 'Табы + чередующиеся блоки' },
-	{ value: 'alternating_blocks', label: 'Чередующиеся блоки (без вкладок)' },
-	{ value: 'text_image', label: 'Текст + изображение' },
-	{ value: 'tabs_text_image', label: 'Табы + текст/изображение' },
-];
-
-/** Шаблон только контента (без режима «с табами»). Для вкладки/блока: null = как у страницы по умолчанию. */
-export type ContentTemplate = 'alternating_blocks' | 'text_image';
-
-export const CONTENT_TEMPLATES: Array<{ value: ContentTemplate; label: string }> = [
-	{ value: 'alternating_blocks', label: 'Чередующиеся блоки' },
-	{ value: 'text_image', label: 'Текст + изображение' },
-];
-
-export interface PageParagraph {
-	id: number;
-	position: number;
-	text: string;
-}
-
-export interface PageBlock {
-	id: number;
-	position: number;
-	img: string | null;
-	template: ContentTemplate | null;
-	paragraphs: PageParagraph[];
-}
-
-export type MediaItem =
-	| { kind: 'photo'; src: string; title?: string; description?: string }
-	| {
-			kind: 'video';
-			src: string;
-			title?: string;
-			description?: string;
-			is_external?: boolean;
-	  };
-
-export interface PageTab {
-	id: number;
-	position: number;
-	label: string;
-	template: ContentTemplate | null;
-	media?: MediaItem[];
-	blocks: PageBlock[];
-}
-
-export interface PageDto {
+export interface PublicPage {
 	id: number;
 	slug: string;
 	title: string;
-	template: PageTemplate;
-	media?: MediaItem[];
-	tabs: PageTab[];
-	blocks: PageBlock[];
+	themeKey: string;
+	sidebarEnabled: boolean;
+	document: PageDocument;
 }
 
-export interface PageInput {
+export interface DraftPage extends PublicPage {
+	documentVersion: number;
+	draftDocument: PageDocument;
+	publishedDocument: PageDocument | null;
+}
+
+export interface PageVersionSummary {
+	id: number;
+	pageId: number;
+	createdAt: string;
+	createdBy: string | null;
+}
+
+export interface PageVersionDetail extends PageVersionSummary {
+	document: PageDocument;
+}
+
+export interface CreatePageInput {
 	slug?: string;
 	title?: string;
-	template?: PageTemplate;
-	media?: MediaItem[];
+	themeKey?: string;
+	sidebarEnabled?: boolean;
 }
 
-export interface TabInput {
-	label?: string;
-	position?: number;
-	template?: ContentTemplate | null;
-	media?: MediaItem[];
-}
-
-export interface BlockInput {
-	page_id?: number | null;
-	tab_id?: number | null;
-	img?: string | null;
-	position?: number;
-	template?: ContentTemplate | null;
-}
-
-export interface ParagraphInput {
-	text?: string;
-	position?: number;
+export interface UpdatePageMetaInput {
+	slug?: string;
+	title?: string;
+	themeKey?: string;
+	sidebarEnabled?: boolean;
 }
 
 export async function fetchPages(): Promise<PageSummary[]> {
 	return apiRequest<PageSummary[]>('/pages');
 }
 
-export async function fetchPageBySlug(slug: string): Promise<PageDto> {
-	return apiRequest<PageDto>(`/pages/by-slug/${encodeURIComponent(slug)}`);
+export async function fetchPublicPageBySlug(slug: string): Promise<PublicPage> {
+	return apiRequest<PublicPage>(`/pages/public/${encodeURIComponent(slug)}`);
 }
 
-export async function fetchPageByPath(path: string): Promise<PageDto> {
-	return apiRequest<PageDto>(`/pages/by-path?path=${encodeURIComponent(path)}`);
+export async function fetchPublicPageByPath(path: string): Promise<PublicPage> {
+	return apiRequest<PublicPage>(`/pages/by-path?path=${encodeURIComponent(path)}`);
 }
 
-export async function fetchPageById(id: number): Promise<PageDto> {
-	return apiRequest<PageDto>(`/pages/${id}`);
+export async function fetchDraftPageBySlug(slug: string): Promise<DraftPage> {
+	return apiRequest<DraftPage>(`/pages/${encodeURIComponent(slug)}/draft`);
 }
 
-export async function createPage(data: PageInput): Promise<PageSummary> {
+export async function fetchPageById(id: number): Promise<DraftPage> {
+	return apiRequest<DraftPage>(`/pages/by-id/${id}`);
+}
+
+export async function createPage(data: CreatePageInput): Promise<PageSummary> {
 	return apiRequest<PageSummary>('/pages', {
 		method: 'POST',
 		body: JSON.stringify(data),
 	});
 }
 
-export async function updatePage(id: number, data: PageInput): Promise<PageSummary> {
-	return apiRequest<PageSummary>(`/pages/${id}`, {
+export async function updatePageMeta(id: number, data: UpdatePageMetaInput): Promise<PageSummary> {
+	return apiRequest<PageSummary>(`/pages/by-id/${id}`, {
 		method: 'PUT',
 		body: JSON.stringify(data),
 	});
+}
+
+export async function autosaveDraft(
+	slug: string,
+	document: PageDocument,
+	documentVersion: number,
+): Promise<{ documentVersion: number }> {
+	return apiRequest<{ documentVersion: number }>(`/pages/${encodeURIComponent(slug)}/draft`, {
+		method: 'PATCH',
+		body: JSON.stringify({ document, documentVersion }),
+	});
+}
+
+export async function publishPage(slug: string): Promise<PublicPage> {
+	return apiRequest<PublicPage>(`/pages/${encodeURIComponent(slug)}/publish`, {
+		method: 'POST',
+	});
+}
+
+export async function fetchPageVersions(slug: string): Promise<PageVersionSummary[]> {
+	return apiRequest<PageVersionSummary[]>(`/pages/${encodeURIComponent(slug)}/versions`);
+}
+
+export async function fetchPageVersion(slug: string, versionId: number): Promise<PageVersionDetail> {
+	return apiRequest<PageVersionDetail>(
+		`/pages/${encodeURIComponent(slug)}/versions/${versionId}`,
+	);
+}
+
+export async function restorePageVersion(slug: string, versionId: number): Promise<DraftPage> {
+	return apiRequest<DraftPage>(
+		`/pages/${encodeURIComponent(slug)}/versions/${versionId}/restore`,
+		{ method: 'POST' },
+	);
 }
 
 export async function deletePage(id: number): Promise<void> {
-	await apiRequest<void>(`/pages/${id}`, { method: 'DELETE' });
-}
-
-export async function createTab(pageId: number, data: TabInput): Promise<PageTab> {
-	return apiRequest<PageTab>(`/pages/${pageId}/tabs`, {
-		method: 'POST',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function updateTab(tabId: number, data: TabInput): Promise<PageTab> {
-	return apiRequest<PageTab>(`/pages/tabs/${tabId}`, {
-		method: 'PUT',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function deleteTab(tabId: number): Promise<void> {
-	await apiRequest<void>(`/pages/tabs/${tabId}`, { method: 'DELETE' });
-}
-
-export async function createBlock(data: BlockInput): Promise<PageBlock> {
-	return apiRequest<PageBlock>('/pages/blocks', {
-		method: 'POST',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function updateBlock(blockId: number, data: BlockInput): Promise<PageBlock> {
-	return apiRequest<PageBlock>(`/pages/blocks/${blockId}`, {
-		method: 'PUT',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function deleteBlock(blockId: number): Promise<void> {
-	await apiRequest<void>(`/pages/blocks/${blockId}`, { method: 'DELETE' });
-}
-
-export async function createParagraph(
-	blockId: number,
-	data: ParagraphInput,
-): Promise<PageParagraph> {
-	return apiRequest<PageParagraph>(`/pages/blocks/${blockId}/paragraphs`, {
-		method: 'POST',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function updateParagraph(
-	paragraphId: number,
-	data: ParagraphInput,
-): Promise<PageParagraph> {
-	return apiRequest<PageParagraph>(`/pages/paragraphs/${paragraphId}`, {
-		method: 'PUT',
-		body: JSON.stringify(data),
-	});
-}
-
-export async function deleteParagraph(paragraphId: number): Promise<void> {
-	await apiRequest<void>(`/pages/paragraphs/${paragraphId}`, { method: 'DELETE' });
+	await apiRequest<void>(`/pages/by-id/${id}`, { method: 'DELETE' });
 }

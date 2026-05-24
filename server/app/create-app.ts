@@ -1,13 +1,14 @@
 import cors from 'cors';
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from '../env';
-import { galleryRouter } from '../modules/gallery';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { menuRouter } from '../modules/menu';
 import { pagesRouter } from '../modules/pages';
-import { rectorsRouter } from '../modules/rectors';
-import { teachersRouter } from '../modules/teachers';
-import { filesRouter } from '../routes/files.router';
-import { imagesRouter } from '../routes/images.router';
+import { peopleRouter } from '../modules/people';
+import { mediaRouter } from '../routes/media.router';
 import { errorHandler } from './middleware/error-handler';
 
 export function createApp() {
@@ -16,13 +17,14 @@ export function createApp() {
 	app.use(cors({ origin: env.CORS_ORIGIN }));
 	app.use(express.json());
 
-	app.use('/api/teachers', teachersRouter);
-	app.use('/api/rectors', rectorsRouter);
-	app.use('/api/images', imagesRouter);
-	app.use('/api/files', filesRouter);
+	app.use('/api/people', peopleRouter);
+	app.use('/api/media', mediaRouter);
 	app.use('/api/pages', pagesRouter);
 	app.use('/api/menu', menuRouter);
-	app.use('/api/gallery', galleryRouter);
+
+	// Статика загруженных файлов: /images, /videos, /files
+	const publicDir = path.join(__dirname, '../../public');
+	app.use(express.static(publicDir));
 
 	app.use(errorHandler);
 

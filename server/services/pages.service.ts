@@ -1,668 +1,411 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js';
-import { HttpError } from '../shared/errors';
-import type {
-	BlockDto,
-	ContentTemplate,
-	MediaItem,
-	PageBlockRow,
-	PageDto,
-	PageParagraphRow,
-	PageRow,
-	PageTabRow,
-	PageTemplate,
-} from '../types';
+import { EMPTY_DOCUMENT, isPageDocument, parsePageDocument, type PageDocument } from '../domain/document.js';
+import { HttpError } from '../shared/errors.js';
 
-interface PageInput {
+export interface PageSummaryDto {
+	id: number;
+	slug: string;
+	title: string;
+	themeKey: string;
+	sidebarEnabled: boolean;
+	hasPublished: boolean;
+	documentVersion: number;
+}
+
+export interface PublicPageDto {
+	id: number;
+	slug: string;
+	title: string;
+	themeKey: string;
+	sidebarEnabled: boolean;
+	document: PageDocument;
+}
+
+export interface DraftPageDto extends PublicPageDto {
+	documentVersion: number;
+	draftDocument: PageDocument;
+	publishedDocument: PageDocument | null;
+}
+
+export interface PageVersionDto {
+	id: number;
+	pageId: number;
+	createdAt: string;
+	createdBy: string | null;
+}
+
+export interface PageVersionDetailDto extends PageVersionDto {
+	document: PageDocument;
+}
+
+interface CreatePageInput {
 	slug?: string;
 	title?: string;
-	template?: PageTemplate;
-	media?: unknown;
+	themeKey?: string;
+	sidebarEnabled?: boolean;
 }
 
-interface TabInput {
-	label?: string;
-	position?: number;
-	template?: ContentTemplate | null;
-	media?: unknown;
-}
-
-interface BlockInput {
-	page_id?: number | null;
-	tab_id?: number | null;
-	img?: string | null;
-	position?: number;
-	template?: ContentTemplate | null;
-}
-
-interface ParagraphInput {
-	text?: string;
-	position?: number;
-}
-
-function rowContentTemplate(v: string | null | undefined): ContentTemplate | null {
-	if (v === null || v === undefined) return null;
-	if (v === 'alternating_blocks' || v === 'text_image') return v;
-	return null;
-}
-
-function mapBlockRow(row: {
-	id: number;
-	page_id: number | null;
-	tab_id: number | null;
-	position: number;
-	img: string | null;
-	template: string | null;
-}): PageBlockRow {
-	return {
-		...row,
-		template: rowContentTemplate(row.template),
-	};
-}
-
-function toPageRow(row: { id: number; slug: string; title: string; template: string }): PageRow {
-	return {
-		id: row.id,
-		slug: row.slug,
-		title: row.title,
-		template: row.template as PageTemplate,
-	};
-}
-
-function normalizeMedia(raw: unknown): MediaItem[] {
-	if (!Array.isArray(raw)) return [];
-	const out: MediaItem[] = [];
-	for (const item of raw) {
-		if (typeof item !== 'object' || item === null) continue;
-		const v = item as Record<string, unknown>;
-		const kind = v.kind;
-		const src = typeof v.src === 'string' ? v.src.trim() : '';
-		if ((kind !== 'photo' && kind !== 'video') || !src) continue;
-		const title = typeof v.title === 'string' ? v.title : undefined;
-		const description = typeof v.description === 'string' ? v.description : undefined;
-		if (kind === 'photo') out.push({ kind, src, title, description });
-		else
-			out.push({
-				kind,
-				src,
-				title,
-				description,
-				is_external: typeof v.is_external === 'boolean' ? v.is_external : undefined,
-			});
-	}
-	return out;
+interface UpdatePageMetaInput {
+	title?: string;
+	themeKey?: string;
+	sidebarEnabled?: boolean;
+	slug?: string;
 }
 
 export class PagesService {
 	constructor(private prisma: PrismaClient) {}
 
-	private normalizePath(raw: string): string {
+	private normalizeSlug(raw: string): string {
 		return raw
 			.trim()
 			.replace(/^\/+|\/+$/g, '')
 			.replace(/\/{2,}/g, '/');
 	}
 
-	async listPages(): Promise<PageRow[]> {
-		const rows = await this.prisma.pages.findMany({
+	private async resolveSlug(slug: string): Promise<string> {
+		const normalized = this.normalizeSlug(slug);
+		if (!normalized) return normalized;
+
+		const redirect = await this.prisma.pageRedirect.findUnique({
+			where: { fromSlug: normalized },
+		});
+		if (redirect) return redirect.toSlug;
+
+		return normalized;
+	}
+
+	async listPages(): Promise<PageSummaryDto[]> {
+		const rows = await this.prisma.page.findMany({
+			where: { deletedAt: null },
 			orderBy: { id: 'asc' },
-			select: { id: true, slug: true, title: true, template: true },
+			select: {
+				id: true,
+				slug: true,
+				title: true,
+				themeKey: true,
+				sidebarEnabled: true,
+				publishedDocument: true,
+				documentVersion: true,
+			},
 		});
-		return rows.map(toPageRow);
+		return rows.map((r) => ({
+			id: r.id,
+			slug: r.slug,
+			title: r.title,
+			themeKey: r.themeKey,
+			sidebarEnabled: r.sidebarEnabled,
+			hasPublished: r.publishedDocument !== null,
+			documentVersion: r.documentVersion,
+		}));
 	}
 
-	async getPageBySlug(slug: string): Promise<PageDto | null> {
-		const page = await this.prisma.pages.findUnique({
-			where: { slug: this.normalizePath(slug) },
-			select: { id: true, slug: true, title: true, template: true, media: true },
+	async getPublishedBySlug(slug: string): Promise<PublicPageDto | null> {
+		const resolved = await this.resolveSlug(slug);
+		const row = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
 		});
-		if (!page) return null;
-		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
-			media: MediaItem[];
-		});
-	}
-
-	async getPageByPath(path: string): Promise<PageDto | null> {
-		const normalized = this.normalizePath(path);
-		if (!normalized) return null;
-		const page = await this.prisma.pages.findUnique({
-			where: { slug: normalized },
-			select: { id: true, slug: true, title: true, template: true, media: true },
-		});
-		if (!page) return null;
-		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
-			media: MediaItem[];
-		});
-	}
-
-	async getPageById(id: number): Promise<PageDto | null> {
-		const page = await this.prisma.pages.findUnique({
-			where: { id },
-			select: { id: true, slug: true, title: true, template: true, media: true },
-		});
-		if (!page) return null;
-		return this.assemblePage({ ...toPageRow(page), media: normalizeMedia(page.media) } as PageRow & {
-			media: MediaItem[];
-		});
-	}
-
-	private async assemblePage(page: (PageRow & { media?: MediaItem[] }) | PageRow): Promise<PageDto> {
-		const [tabsRes, blocksRes] = await Promise.all([
-			this.prisma.page_tabs.findMany({
-				where: { page_id: page.id },
-				orderBy: { position: 'asc' },
-				select: {
-					id: true,
-					page_id: true,
-					position: true,
-					label: true,
-					template: true,
-					media: true,
-				},
-			}),
-			this.prisma.page_blocks.findMany({
-				where: {
-					OR: [{ page_id: page.id }, { page_tabs: { page_id: page.id } }],
-				},
-				// position уникальна только внутри parent-а (страницы/вкладки),
-				// поэтому сортируем дополнительно уже после выборки внутри каждой группы.
-				orderBy: { id: 'asc' },
-				select: {
-					id: true,
-					page_id: true,
-					tab_id: true,
-					position: true,
-					img: true,
-					template: true,
-				},
-			}),
-		]);
-
-		const blockIds = blocksRes.map((b) => b.id);
-		const paragraphsRes =
-			blockIds.length > 0
-				? await this.prisma.page_paragraphs.findMany({
-						where: { block_id: { in: blockIds } },
-						orderBy: { position: 'asc' },
-						select: { id: true, block_id: true, position: true, text: true },
-					})
-				: [];
-
-		const paragraphsByBlock = new Map<number, PageParagraphRow[]>();
-		for (const p of paragraphsRes) {
-			const list = paragraphsByBlock.get(p.block_id) ?? [];
-			list.push(p);
-			paragraphsByBlock.set(p.block_id, list);
-		}
-
-		const blockToDto = (b: {
-			id: number;
-			position: number;
-			img: string | null;
-			template: string | null;
-		}): BlockDto => ({
-			id: b.id,
-			position: b.position,
-			img: b.img,
-			template: rowContentTemplate(b.template),
-			paragraphs: (paragraphsByBlock.get(b.id) ?? []).map((p) => ({
-				id: p.id,
-				position: p.position,
-				text: p.text,
-			})),
-		});
-
-		const tabsDto = tabsRes.map((t) => {
-			const blocks = blocksRes
-				.filter((b) => b.tab_id === t.id)
-				.sort((a, b) => a.position - b.position)
-				.map(blockToDto);
-
-			return {
-				id: t.id,
-				position: t.position,
-				label: t.label,
-				template: rowContentTemplate(t.template),
-				media: normalizeMedia(t.media),
-				blocks,
-			};
-		});
-
-		const directBlocks = blocksRes
-			.filter((b) => b.page_id === page.id)
-			.sort((a, b) => a.position - b.position)
-			.map(blockToDto);
+		if (!row || row.publishedDocument === null) return null;
 
 		return {
-			id: page.id,
-			slug: page.slug,
-			title: page.title,
-			template: page.template as PageTemplate,
-			media: normalizeMedia((page as { media?: unknown }).media),
-			tabs: tabsDto,
-			blocks: directBlocks,
+			id: row.id,
+			slug: row.slug,
+			title: row.title,
+			themeKey: row.themeKey,
+			sidebarEnabled: row.sidebarEnabled,
+			document: parsePageDocument(row.publishedDocument),
 		};
 	}
 
-	async createPage(data: PageInput): Promise<PageRow> {
-		const slug = this.normalizePath(data.slug ?? '');
+	/** @deprecated use getPublishedBySlug */
+	async getPageByPath(path: string): Promise<PublicPageDto | null> {
+		return this.getPublishedBySlug(path);
+	}
+
+	async getDraftBySlug(slug: string): Promise<DraftPageDto | null> {
+		const resolved = await this.resolveSlug(slug);
+		const row = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+		});
+		if (!row) return null;
+
+		const draft = parsePageDocument(row.draftDocument);
+		const published =
+			row.publishedDocument !== null ? parsePageDocument(row.publishedDocument) : null;
+
+		return {
+			id: row.id,
+			slug: row.slug,
+			title: row.title,
+			themeKey: row.themeKey,
+			sidebarEnabled: row.sidebarEnabled,
+			document: draft,
+			documentVersion: row.documentVersion,
+			draftDocument: draft,
+			publishedDocument: published,
+		};
+	}
+
+	async getPageById(id: number): Promise<DraftPageDto | null> {
+		const row = await this.prisma.page.findFirst({
+			where: { id, deletedAt: null },
+		});
+		if (!row) return null;
+
+		const draft = parsePageDocument(row.draftDocument);
+		const published =
+			row.publishedDocument !== null ? parsePageDocument(row.publishedDocument) : null;
+
+		return {
+			id: row.id,
+			slug: row.slug,
+			title: row.title,
+			themeKey: row.themeKey,
+			sidebarEnabled: row.sidebarEnabled,
+			document: draft,
+			documentVersion: row.documentVersion,
+			draftDocument: draft,
+			publishedDocument: published,
+		};
+	}
+
+	async createPage(data: CreatePageInput): Promise<PageSummaryDto> {
+		const slug = this.normalizeSlug(data.slug ?? '');
 		const title = (data.title ?? '').trim();
 		if (!slug) throw new HttpError(400, 'slug обязателен');
 		if (!title) throw new HttpError(400, 'title обязателен');
 
 		try {
-			const row = await this.prisma.pages.create({
+			const row = await this.prisma.page.create({
 				data: {
 					slug,
 					title,
-					template: data.template ?? 'tabs_alternating',
-					media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue,
+					themeKey: data.themeKey ?? 'default',
+					sidebarEnabled: data.sidebarEnabled ?? false,
+					draftDocument: EMPTY_DOCUMENT as unknown as Prisma.InputJsonValue,
+					publishedDocument: EMPTY_DOCUMENT as unknown as Prisma.InputJsonValue,
 				},
-				select: { id: true, slug: true, title: true, template: true },
 			});
-			return toPageRow(row);
+			return {
+				id: row.id,
+				slug: row.slug,
+				title: row.title,
+				themeKey: row.themeKey,
+				sidebarEnabled: row.sidebarEnabled,
+				hasPublished: true,
+				documentVersion: row.documentVersion,
+			};
 		} catch (err) {
 			if (isUniqueViolation(err)) {
 				throw new HttpError(409, `Страница со slug "${slug}" уже существует`);
 			}
-			if (isTemplateConstraintViolation(err)) {
-				throw new HttpError(400, 'Некорректный template для страницы');
-			}
 			throw err;
 		}
 	}
 
-	async updatePage(id: number, data: PageInput): Promise<PageRow | null> {
-		const normalizedSlug = data.slug === undefined ? undefined : this.normalizePath(data.slug);
+	async updatePageMeta(id: number, data: UpdatePageMetaInput): Promise<PageSummaryDto | null> {
+		const existing = await this.prisma.page.findFirst({ where: { id, deletedAt: null } });
+		if (!existing) return null;
+
+		const newSlug = data.slug !== undefined ? this.normalizeSlug(data.slug) : undefined;
+
+		if (newSlug && newSlug !== existing.slug) {
+			await this.prisma.pageRedirect.upsert({
+				where: { fromSlug: existing.slug },
+				create: { fromSlug: existing.slug, toSlug: newSlug },
+				update: { toSlug: newSlug },
+			});
+		}
+
 		try {
-			const row = await this.prisma.pages.update({
+			const row = await this.prisma.page.update({
 				where: { id },
 				data: {
-					slug: normalizedSlug,
-					title: data.title ?? undefined,
-					template: data.template ?? undefined,
-					media:
-						data.media !== undefined
-							? (normalizeMedia(data.media) as unknown as Prisma.InputJsonValue)
-							: undefined,
+					slug: newSlug,
+					title: data.title?.trim(),
+					themeKey: data.themeKey,
+					sidebarEnabled: data.sidebarEnabled,
 				},
-				select: { id: true, slug: true, title: true, template: true },
 			});
-			return toPageRow(row);
+			return {
+				id: row.id,
+				slug: row.slug,
+				title: row.title,
+				themeKey: row.themeKey,
+				sidebarEnabled: row.sidebarEnabled,
+				hasPublished: row.publishedDocument !== null,
+				documentVersion: row.documentVersion,
+			};
 		} catch (err) {
 			if (isRecordNotFound(err)) return null;
 			if (isUniqueViolation(err)) {
-				throw new HttpError(409, `Страница со slug "${normalizedSlug}" уже существует`);
-			}
-			if (isTemplateConstraintViolation(err)) {
-				throw new HttpError(400, 'Некорректный template для страницы');
+				throw new HttpError(409, 'Страница с таким slug уже существует');
 			}
 			throw err;
 		}
 	}
 
-	async deletePage(id: number): Promise<boolean> {
+	async autosaveDraft(
+		slug: string,
+		document: unknown,
+		expectedVersion: number,
+	): Promise<{ documentVersion: number }> {
+		if (!isPageDocument(document)) {
+			throw new HttpError(400, 'document должен содержать blocks[]');
+		}
+
+		const resolved = await this.resolveSlug(slug);
+		const row = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+		});
+		if (!row) throw new HttpError(404, 'Страница не найдена');
+
+		if (row.documentVersion !== expectedVersion) {
+			throw new HttpError(409, 'Версия документа устарела');
+		}
+
+		const updated = await this.prisma.page.update({
+			where: { id: row.id },
+			data: {
+				draftDocument: document as Prisma.InputJsonValue,
+				documentVersion: { increment: 1 },
+			},
+			select: { documentVersion: true },
+		});
+
+		return { documentVersion: updated.documentVersion };
+	}
+
+	async publish(slug: string): Promise<PublicPageDto> {
+		const resolved = await this.resolveSlug(slug);
+		const row = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+		});
+		if (!row) throw new HttpError(404, 'Страница не найдена');
+
+		const draft = parsePageDocument(row.draftDocument);
+
+		const published = await this.prisma.$transaction(async (tx) => {
+			const updated = await tx.page.update({
+				where: { id: row.id },
+				data: {
+					publishedDocument: draft as unknown as Prisma.InputJsonValue,
+				},
+			});
+
+			await tx.pageVersion.create({
+				data: {
+					pageId: row.id,
+					document: draft as unknown as Prisma.InputJsonValue,
+				},
+			});
+
+			return updated;
+		});
+
+		return {
+			id: published.id,
+			slug: published.slug,
+			title: published.title,
+			themeKey: published.themeKey,
+			sidebarEnabled: published.sidebarEnabled,
+			document: draft,
+		};
+	}
+
+	async listVersions(slug: string): Promise<PageVersionDto[]> {
+		const resolved = await this.resolveSlug(slug);
+		const page = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+			select: { id: true },
+		});
+		if (!page) throw new HttpError(404, 'Страница не найдена');
+
+		const rows = await this.prisma.pageVersion.findMany({
+			where: { pageId: page.id },
+			orderBy: { createdAt: 'desc' },
+			select: { id: true, pageId: true, createdAt: true, createdBy: true },
+		});
+
+		return rows.map((r) => ({
+			id: r.id,
+			pageId: r.pageId,
+			createdAt: r.createdAt.toISOString(),
+			createdBy: r.createdBy,
+		}));
+	}
+
+	async getVersion(slug: string, versionId: number): Promise<PageVersionDetailDto> {
+		const resolved = await this.resolveSlug(slug);
+		const page = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+			select: { id: true },
+		});
+		if (!page) throw new HttpError(404, 'Страница не найдена');
+
+		const version = await this.prisma.pageVersion.findFirst({
+			where: { id: versionId, pageId: page.id },
+			select: { id: true, pageId: true, createdAt: true, createdBy: true, document: true },
+		});
+		if (!version) throw new HttpError(404, 'Версия не найдена');
+
+		return {
+			id: version.id,
+			pageId: version.pageId,
+			createdAt: version.createdAt.toISOString(),
+			createdBy: version.createdBy,
+			document: parsePageDocument(version.document),
+		};
+	}
+
+	async restoreVersion(slug: string, versionId: number): Promise<DraftPageDto> {
+		const resolved = await this.resolveSlug(slug);
+		const page = await this.prisma.page.findFirst({
+			where: { slug: resolved, deletedAt: null },
+		});
+		if (!page) throw new HttpError(404, 'Страница не найдена');
+
+		const version = await this.prisma.pageVersion.findFirst({
+			where: { id: versionId, pageId: page.id },
+		});
+		if (!version) throw new HttpError(404, 'Версия не найдена');
+
+		const document = parsePageDocument(version.document);
+
+		const updated = await this.prisma.page.update({
+			where: { id: page.id },
+			data: {
+				draftDocument: document as unknown as Prisma.InputJsonValue,
+				documentVersion: { increment: 1 },
+			},
+		});
+
+		return {
+			id: updated.id,
+			slug: updated.slug,
+			title: updated.title,
+			themeKey: updated.themeKey,
+			sidebarEnabled: updated.sidebarEnabled,
+			document,
+			documentVersion: updated.documentVersion,
+			draftDocument: document,
+			publishedDocument:
+				updated.publishedDocument !== null
+					? parsePageDocument(updated.publishedDocument)
+					: null,
+		};
+	}
+
+	async softDelete(id: number): Promise<boolean> {
 		try {
-			await this.prisma.pages.delete({ where: { id } });
+			await this.prisma.page.update({
+				where: { id },
+				data: { deletedAt: new Date() },
+			});
 			return true;
 		} catch (err) {
 			if (isRecordNotFound(err)) return false;
 			throw err;
 		}
-	}
-
-	async listTabs(pageId: number): Promise<PageTabRow[]> {
-		const rows = await this.prisma.page_tabs.findMany({
-			where: { page_id: pageId },
-			orderBy: { position: 'asc' },
-			select: { id: true, page_id: true, position: true, label: true, template: true },
-		});
-		return rows.map((r) => ({
-			...r,
-			template: rowContentTemplate(r.template),
-		}));
-	}
-
-	async createTab(pageId: number, data: TabInput): Promise<PageTabRow> {
-		const label = (data.label ?? 'Новая вкладка').trim();
-		return this.prisma.$transaction(async (tx) => {
-			await assertPageExists(tx, pageId);
-
-			const insertPos = await resolveInsertPosition(
-				tx,
-				'page_tabs',
-				'page_id',
-				pageId,
-				data.position,
-			);
-
-			await tx.page_tabs.updateMany({
-				where: { page_id: pageId, position: { gte: insertPos } },
-				data: { position: { increment: 1 } },
-			});
-
-			const row = await tx.page_tabs.create({
-				data: {
-					page_id: pageId,
-					position: insertPos,
-					label,
-					template: data.template ?? null,
-					media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue,
-				},
-				select: { id: true, page_id: true, position: true, label: true, template: true },
-			});
-			return {
-				...row,
-				template: rowContentTemplate(row.template),
-			};
-		});
-	}
-
-	async updateTab(tabId: number, data: TabInput): Promise<PageTabRow | null> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_tabs.findUnique({
-				where: { id: tabId },
-				select: { id: true, page_id: true, position: true, label: true, template: true },
-			});
-			if (!existing) return null;
-
-			if (data.position !== undefined && Number(data.position) !== existing.position) {
-				await reorderWithinParent(
-					tx,
-					'page_tabs',
-					'page_id',
-					existing.page_id,
-					tabId,
-					existing.position,
-					Number(data.position),
-				);
-			}
-
-			if (data.label !== undefined || data.template !== undefined || data.media !== undefined) {
-				await tx.page_tabs.update({
-					where: { id: tabId },
-					data: {
-						...(data.label !== undefined ? { label: data.label } : {}),
-						...(data.template !== undefined ? { template: data.template } : {}),
-						...(data.media !== undefined
-							? { media: normalizeMedia(data.media) as unknown as Prisma.InputJsonValue }
-							: {}),
-					},
-				});
-			}
-
-			const row = await tx.page_tabs.findUniqueOrThrow({
-				where: { id: tabId },
-				select: { id: true, page_id: true, position: true, label: true, template: true },
-			});
-			return {
-				...row,
-				template: rowContentTemplate(row.template),
-			};
-		});
-	}
-
-	async deleteTab(tabId: number): Promise<boolean> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_tabs.findUnique({
-				where: { id: tabId },
-				select: { page_id: true, position: true },
-			});
-			if (!existing) return false;
-
-			await tx.page_tabs.delete({ where: { id: tabId } });
-			await tx.page_tabs.updateMany({
-				where: { page_id: existing.page_id, position: { gt: existing.position } },
-				data: { position: { decrement: 1 } },
-			});
-			return true;
-		});
-	}
-
-	async createBlock(data: BlockInput): Promise<PageBlockRow> {
-		const pageId = normalizeId(data.page_id);
-		const tabId = normalizeId(data.tab_id);
-		assertExactlyOneParent(pageId, tabId);
-
-		return this.prisma.$transaction(async (tx) => {
-			if (pageId !== null) {
-				await assertPageExists(tx, pageId);
-				const insertPos = await resolveInsertPosition(
-					tx,
-					'page_blocks',
-					'page_id',
-					pageId,
-					data.position,
-				);
-				await tx.page_blocks.updateMany({
-					where: { page_id: pageId, position: { gte: insertPos } },
-					data: { position: { increment: 1 } },
-				});
-				const created = await tx.page_blocks.create({
-					data: {
-						page_id: pageId,
-						tab_id: null,
-						position: insertPos,
-						img: data.img ?? null,
-						template: data.template ?? null,
-					},
-					select: {
-						id: true,
-						page_id: true,
-						tab_id: true,
-						position: true,
-						img: true,
-						template: true,
-					},
-				});
-				return mapBlockRow(created);
-			}
-
-			await assertTabExists(tx, tabId!);
-			const insertPos = await resolveInsertPosition(
-				tx,
-				'page_blocks',
-				'tab_id',
-				tabId!,
-				data.position,
-			);
-			await tx.page_blocks.updateMany({
-				where: { tab_id: tabId!, position: { gte: insertPos } },
-				data: { position: { increment: 1 } },
-			});
-			const created = await tx.page_blocks.create({
-				data: {
-					page_id: null,
-					tab_id: tabId!,
-					position: insertPos,
-					img: data.img ?? null,
-					template: data.template ?? null,
-				},
-				select: {
-					id: true,
-					page_id: true,
-					tab_id: true,
-					position: true,
-					img: true,
-					template: true,
-				},
-			});
-			return mapBlockRow(created);
-		});
-	}
-
-	async updateBlock(blockId: number, data: BlockInput): Promise<PageBlockRow | null> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_blocks.findUnique({
-				where: { id: blockId },
-				select: {
-					id: true,
-					page_id: true,
-					tab_id: true,
-					position: true,
-					img: true,
-					template: true,
-				},
-			});
-			if (!existing) return null;
-
-			if (data.page_id !== undefined || data.tab_id !== undefined) {
-				const newPageId = normalizeId(data.page_id);
-				const newTabId = normalizeId(data.tab_id);
-				if (newPageId !== existing.page_id || newTabId !== existing.tab_id) {
-					throw new HttpError(
-						400,
-						'Перенос блока между страницей и вкладкой пока не поддерживается',
-					);
-				}
-			}
-
-			if (data.position !== undefined && Number(data.position) !== existing.position) {
-				if (existing.page_id !== null) {
-					await reorderWithinParent(
-						tx,
-						'page_blocks',
-						'page_id',
-						existing.page_id,
-						blockId,
-						existing.position,
-						Number(data.position),
-					);
-				} else if (existing.tab_id !== null) {
-					await reorderWithinParent(
-						tx,
-						'page_blocks',
-						'tab_id',
-						existing.tab_id,
-						blockId,
-						existing.position,
-						Number(data.position),
-					);
-				}
-			}
-
-			if (data.img !== undefined || data.template !== undefined) {
-				await tx.page_blocks.update({
-					where: { id: blockId },
-					data: {
-						...(data.img !== undefined ? { img: data.img } : {}),
-						...(data.template !== undefined ? { template: data.template } : {}),
-					},
-				});
-			}
-
-			const updated = await tx.page_blocks.findUniqueOrThrow({
-				where: { id: blockId },
-				select: {
-					id: true,
-					page_id: true,
-					tab_id: true,
-					position: true,
-					img: true,
-					template: true,
-				},
-			});
-			return mapBlockRow(updated);
-		});
-	}
-
-	async deleteBlock(blockId: number): Promise<boolean> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_blocks.findUnique({
-				where: { id: blockId },
-				select: { page_id: true, tab_id: true, position: true },
-			});
-			if (!existing) return false;
-
-			await tx.page_blocks.delete({ where: { id: blockId } });
-			if (existing.page_id !== null) {
-				await tx.page_blocks.updateMany({
-					where: { page_id: existing.page_id, position: { gt: existing.position } },
-					data: { position: { decrement: 1 } },
-				});
-			} else if (existing.tab_id !== null) {
-				await tx.page_blocks.updateMany({
-					where: { tab_id: existing.tab_id, position: { gt: existing.position } },
-					data: { position: { decrement: 1 } },
-				});
-			}
-			return true;
-		});
-	}
-
-	async createParagraph(blockId: number, data: ParagraphInput): Promise<PageParagraphRow> {
-		const text = data.text ?? '';
-		return this.prisma.$transaction(async (tx) => {
-			await assertBlockExists(tx, blockId);
-			const insertPos = await resolveInsertPosition(
-				tx,
-				'page_paragraphs',
-				'block_id',
-				blockId,
-				data.position,
-			);
-			await tx.page_paragraphs.updateMany({
-				where: { block_id: blockId, position: { gte: insertPos } },
-				data: { position: { increment: 1 } },
-			});
-			return tx.page_paragraphs.create({
-				data: { block_id: blockId, position: insertPos, text },
-				select: { id: true, block_id: true, position: true, text: true },
-			});
-		});
-	}
-
-	async updateParagraph(
-		paragraphId: number,
-		data: ParagraphInput,
-	): Promise<PageParagraphRow | null> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_paragraphs.findUnique({
-				where: { id: paragraphId },
-				select: { id: true, block_id: true, position: true, text: true },
-			});
-			if (!existing) return null;
-
-			if (data.position !== undefined && Number(data.position) !== existing.position) {
-				await reorderWithinParent(
-					tx,
-					'page_paragraphs',
-					'block_id',
-					existing.block_id,
-					paragraphId,
-					existing.position,
-					Number(data.position),
-				);
-			}
-
-			if (data.text !== undefined) {
-				await tx.page_paragraphs.update({
-					where: { id: paragraphId },
-					data: { text: data.text },
-				});
-			}
-
-			return tx.page_paragraphs.findUniqueOrThrow({
-				where: { id: paragraphId },
-				select: { id: true, block_id: true, position: true, text: true },
-			});
-		});
-	}
-
-	async deleteParagraph(paragraphId: number): Promise<boolean> {
-		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.page_paragraphs.findUnique({
-				where: { id: paragraphId },
-				select: { block_id: true, position: true },
-			});
-			if (!existing) return false;
-
-			await tx.page_paragraphs.delete({ where: { id: paragraphId } });
-			await tx.page_paragraphs.updateMany({
-				where: { block_id: existing.block_id, position: { gt: existing.position } },
-				data: { position: { decrement: 1 } },
-			});
-			return true;
-		});
 	}
 }
 
@@ -674,17 +417,6 @@ function isUniqueViolation(err: unknown): boolean {
 	return code === 'P2002' || code === '23505';
 }
 
-function isTemplateConstraintViolation(err: unknown): boolean {
-	if (typeof err !== 'object' || err === null) return false;
-	if (
-		'constraint' in err &&
-		(err as { constraint?: unknown }).constraint === 'pages_template_check'
-	)
-		return true;
-	const code = 'code' in err ? (err as { code?: unknown }).code : undefined;
-	return code === '23514' && String(err).includes('pages_template_check');
-}
-
 function isRecordNotFound(err: unknown): boolean {
 	return (
 		typeof err === 'object' &&
@@ -692,110 +424,4 @@ function isRecordNotFound(err: unknown): boolean {
 		'code' in err &&
 		(err as { code?: unknown }).code === 'P2025'
 	);
-}
-
-function normalizeId(value: number | null | undefined): number | null {
-	if (value === null || value === undefined) return null;
-	const n = Number(value);
-	return Number.isFinite(n) ? n : null;
-}
-
-function assertExactlyOneParent(pageId: number | null, tabId: number | null): void {
-	if ((pageId === null) === (tabId === null)) {
-		throw new HttpError(400, 'Блок должен быть привязан либо к странице, либо к вкладке');
-	}
-}
-
-async function assertPageExists(tx: Prisma.TransactionClient, pageId: number): Promise<void> {
-	const n = await tx.pages.count({ where: { id: pageId } });
-	if (n === 0) throw new HttpError(404, 'Страница не найдена');
-}
-
-async function assertTabExists(tx: Prisma.TransactionClient, tabId: number): Promise<void> {
-	const n = await tx.page_tabs.count({ where: { id: tabId } });
-	if (n === 0) throw new HttpError(404, 'Вкладка не найдена');
-}
-
-async function assertBlockExists(tx: Prisma.TransactionClient, blockId: number): Promise<void> {
-	const n = await tx.page_blocks.count({ where: { id: blockId } });
-	if (n === 0) throw new HttpError(404, 'Блок не найден');
-}
-
-async function resolveInsertPosition(
-	tx: Prisma.TransactionClient,
-	table: 'page_tabs' | 'page_blocks' | 'page_paragraphs',
-	parentColumn: 'page_id' | 'tab_id' | 'block_id',
-	parentId: number,
-	position: number | undefined,
-): Promise<number> {
-	let count = 0;
-	if (table === 'page_tabs') {
-		count = await tx.page_tabs.count({ where: { page_id: parentId } });
-	} else if (table === 'page_blocks') {
-		count =
-			parentColumn === 'page_id'
-				? await tx.page_blocks.count({ where: { page_id: parentId } })
-				: await tx.page_blocks.count({ where: { tab_id: parentId } });
-	} else {
-		count = await tx.page_paragraphs.count({ where: { block_id: parentId } });
-	}
-	if (position === undefined) return count + 1;
-	const n = Number(position);
-	return Math.max(1, Math.min(Number.isFinite(n) ? n : count + 1, count + 1));
-}
-
-const REORDER_KEYS = new Set([
-	'page_tabs:page_id',
-	'page_blocks:page_id',
-	'page_blocks:tab_id',
-	'page_paragraphs:block_id',
-]);
-
-async function reorderWithinParent(
-	tx: Prisma.TransactionClient,
-	table: 'page_tabs' | 'page_blocks' | 'page_paragraphs',
-	parentColumn: 'page_id' | 'tab_id' | 'block_id',
-	parentId: number,
-	rowId: number,
-	currentPos: number,
-	rawTargetPos: number,
-): Promise<void> {
-	if (!REORDER_KEYS.has(`${table}:${parentColumn}`)) {
-		throw new Error('Invalid reorder table/parent combination');
-	}
-
-	let count = 0;
-	if (table === 'page_tabs') {
-		count = await tx.page_tabs.count({ where: { page_id: parentId } });
-	} else if (table === 'page_blocks') {
-		count =
-			parentColumn === 'page_id'
-				? await tx.page_blocks.count({ where: { page_id: parentId } })
-				: await tx.page_blocks.count({ where: { tab_id: parentId } });
-	} else {
-		count = await tx.page_paragraphs.count({ where: { block_id: parentId } });
-	}
-
-	const targetPos = Math.max(1, Math.min(rawTargetPos, count));
-	if (targetPos === currentPos) return;
-
-	await tx.$executeRawUnsafe(`UPDATE ${table} SET position = 0 WHERE id = $1`, rowId);
-
-	if (targetPos > currentPos) {
-		await tx.$executeRawUnsafe(
-			`UPDATE ${table} SET position = position - 1 WHERE ${parentColumn} = $1 AND position > $2 AND position <= $3`,
-			parentId,
-			currentPos,
-			targetPos,
-		);
-	} else {
-		await tx.$executeRawUnsafe(
-			`UPDATE ${table} SET position = position + 1 WHERE ${parentColumn} = $1 AND position >= $2 AND position < $3`,
-			parentId,
-			targetPos,
-			currentPos,
-		);
-	}
-
-	await tx.$executeRawUnsafe(`UPDATE ${table} SET position = $1 WHERE id = $2`, targetPos, rowId);
 }

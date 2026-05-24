@@ -1,26 +1,36 @@
 import {
 	DndContext,
 	PointerSensor,
-	useDroppable,
 	useDraggable,
+	useDroppable,
 	useSensor,
 	useSensors,
 	type DragEndEvent,
 } from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-	deletePath,
-	fetchFilesIndex,
-	mkdir,
-	movePath,
-	renamePath,
-	uploadByUrl,
-	uploadFiles,
-	type FileManagerEntry,
-} from '../../../../api/files';
+	browseMedia,
+	deleteMediaPath,
+	mkdirMedia,
+	moveMediaPath,
+	publicUrlFor,
+	renameMediaPath,
+	updateMediaAsset,
+	uploadMediaByUrl,
+	uploadMediaFiles,
+	type MediaBrowseAsset,
+	type MediaBrowseEntry,
+	type MediaRoot,
+} from '../../../../api/media';
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
-import { adminInputClass } from '../ui/adminFormStyles';
+import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+
+const ROOTS: Array<{ id: MediaRoot; label: string; icon: string }> = [
+	{ id: 'images', label: 'Изображения', icon: '🖼️' },
+	{ id: 'videos', label: 'Видео', icon: '🎬' },
+	{ id: 'files', label: 'Файлы', icon: '📄' },
+];
 
 function errorMessage(error: unknown, fallback: string): string {
 	return error instanceof ApiError ? error.message : fallback;
@@ -31,11 +41,6 @@ function relDirOf(relPath: string): string {
 	return parts.slice(0, -1).join('/');
 }
 
-function baseNameOf(relPath: string): string {
-	const parts = relPath.split('/').filter(Boolean);
-	return parts.at(-1) ?? '';
-}
-
 function joinRel(dir: string, name: string): string {
 	const d = dir.trim().replace(/^\/+|\/+$/g, '');
 	const n = name.trim().replace(/^\/+|\/+$/g, '');
@@ -44,37 +49,47 @@ function joinRel(dir: string, name: string): string {
 	return `${d}/${n}`;
 }
 
-function isDir(e: FileManagerEntry): boolean {
+function isDir(e: MediaBrowseEntry): boolean {
 	return e.kind === 'dir';
 }
 
 export type FileManagerProps = {
+	initialRoot?: MediaRoot;
 	initialDir?: string;
-	onPick?: (url: string, entry: FileManagerEntry) => void;
+	onPick?: (url: string, entry: MediaBrowseEntry, root: MediaRoot) => void;
 	allowPickKinds?: Array<'file' | 'dir'>;
 };
 
-export default function FileManager({ initialDir = '', onPick, allowPickKinds }: FileManagerProps) {
+export default function FileManager({
+	initialRoot = 'images',
+	initialDir = '',
+	onPick,
+	allowPickKinds,
+}: FileManagerProps) {
+	const [root, setRoot] = useState<MediaRoot>(initialRoot);
 	const [dir, setDir] = useState(initialDir);
-	const [entries, setEntries] = useState<FileManagerEntry[]>([]);
+	const [entries, setEntries] = useState<MediaBrowseEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
 	const [creatingFolder, setCreatingFolder] = useState(false);
 	const [newFolderName, setNewFolderName] = useState('');
-
 	const [urlToUpload, setUrlToUpload] = useState('');
 	const [uploading, setUploading] = useState(false);
+	const [editingAsset, setEditingAsset] = useState<{
+		entry: MediaBrowseEntry;
+		asset: MediaBrowseAsset;
+	} | null>(null);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-	const reload = async (nextDir = dir) => {
+	const reload = async (nextRoot = root, nextDir = dir) => {
 		try {
 			setLoading(true);
 			setError(null);
-			const res = await fetchFilesIndex(nextDir);
+			const res = await browseMedia(nextRoot, nextDir);
+			setRoot(res.root);
 			setDir(res.dir);
 			setEntries(res.entries);
 		} catch (e) {
@@ -85,31 +100,36 @@ export default function FileManager({ initialDir = '', onPick, allowPickKinds }:
 	};
 
 	useEffect(() => {
-		void reload(initialDir);
+		void reload(initialRoot, initialDir);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
 	const parentDir = useMemo(() => relDirOf(dir), [dir]);
 	const breadcrumbs = useMemo(() => {
 		const parts = dir.split('/').filter(Boolean);
-		const items: Array<{ label: string; rel: string }> = [{ label: 'images', rel: '' }];
+		const items: Array<{ label: string; rel: string }> = [{ label: root, rel: '' }];
 		let acc = '';
 		for (const p of parts) {
 			acc = joinRel(acc, p);
 			items.push({ label: p, rel: acc });
 		}
 		return items;
-	}, [dir]);
+	}, [dir, root]);
 
 	const allowPick = allowPickKinds ? new Set(allowPickKinds) : null;
+
+	const switchRoot = (next: MediaRoot) => {
+		setEditingAsset(null);
+		void reload(next, '');
+	};
 
 	const handleUploadFiles = async (files: File[]) => {
 		if (!files.length) return;
 		setUploading(true);
 		setError(null);
 		try {
-			await uploadFiles(dir, files);
-			await reload(dir);
+			await uploadMediaFiles(root, dir, files);
+			await reload(root, dir);
 		} catch (e) {
 			setError(errorMessage(e, 'Не удалось загрузить файлы'));
 		} finally {
@@ -117,25 +137,14 @@ export default function FileManager({ initialDir = '', onPick, allowPickKinds }:
 		}
 	};
 
-	const handleDropUpload: React.DragEventHandler<HTMLDivElement> = async (e) => {
-		e.preventDefault();
-		const files = Array.from(e.dataTransfer.files ?? []);
-		await handleUploadFiles(files);
-	};
-
-	const handleDragOver: React.DragEventHandler<HTMLDivElement> = (e) => {
-		e.preventDefault();
-	};
-
 	const handleCreateFolder = async () => {
 		const name = newFolderName.trim();
 		if (!name) return;
 		try {
-			setError(null);
-			await mkdir(dir, name);
+			await mkdirMedia(root, dir, name);
 			setNewFolderName('');
 			setCreatingFolder(false);
-			await reload(dir);
+			await reload(root, dir);
 		} catch (e) {
 			setError(errorMessage(e, 'Не удалось создать папку'));
 		}
@@ -147,23 +156,13 @@ export default function FileManager({ initialDir = '', onPick, allowPickKinds }:
 		setUploading(true);
 		setError(null);
 		try {
-			await uploadByUrl(dir, url);
+			await uploadMediaByUrl(root, dir, url);
 			setUrlToUpload('');
-			await reload(dir);
+			await reload(root, dir);
 		} catch (e) {
-			setError(errorMessage(e, 'Не удалось загрузить по URL'));
+			setError(errorMessage(e, 'Не удалось добавить ссылку'));
 		} finally {
 			setUploading(false);
-		}
-	};
-
-	const handleDelete = async (relPath: string) => {
-		try {
-			setError(null);
-			await deletePath(relPath);
-			await reload(dir);
-		} catch (e) {
-			setError(errorMessage(e, 'Не удалось удалить'));
 		}
 	};
 
@@ -173,11 +172,9 @@ export default function FileManager({ initialDir = '', onPick, allowPickKinds }:
 		if (!over.startsWith('dir:')) return;
 		const toDir = over.slice('dir:'.length);
 		if (toDir === relDirOf(from)) return;
-
 		try {
-			setError(null);
-			await movePath(from, toDir);
-			await reload(dir);
+			await moveMediaPath(root, from, toDir);
+			await reload(root, dir);
 		} catch (e) {
 			setError(errorMessage(e, 'Не удалось переместить'));
 		}
@@ -185,223 +182,386 @@ export default function FileManager({ initialDir = '', onPick, allowPickKinds }:
 
 	return (
 		<DndContext sensors={sensors} onDragEnd={(e) => void onDragEnd(e)}>
-			<div className="grid grid-cols-[280px_1fr] gap-4">
-				<aside className="bg-white border-2 border-blue-100 rounded-2xl p-4">
-					<div className="flex items-center justify-between mb-3">
-						<div className="text-blue-800 font-bold">Папки</div>
-						<AdminButton size="sm" onClick={() => void reload(dir)}>
-							⟳
-						</AdminButton>
-					</div>
+			<div className="flex flex-col gap-4">
+				<div className="flex flex-wrap gap-2">
+					{ROOTS.map((r) => (
+						<button
+							key={r.id}
+							type="button"
+							onClick={() => switchRoot(r.id)}
+							className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
+								root === r.id
+									? 'bg-blue-700 text-white border-blue-700'
+									: 'border-blue-200 text-blue-800 hover:bg-blue-50'
+							}`}
+						>
+							{r.icon} {r.label}
+						</button>
+					))}
+				</div>
 
-					<TreeRoot currentDir={dir} onNavigate={(d) => void reload(d)} />
-				</aside>
+				<div className="grid grid-cols-[280px_1fr] gap-4">
+					<aside className="bg-white border-2 border-blue-100 rounded-2xl p-4">
+						<div className="flex items-center justify-between mb-3">
+							<div className="text-blue-800 font-bold">Папки</div>
+							<AdminButton size="sm" onClick={() => void reload(root, dir)}>
+								⟳
+							</AdminButton>
+						</div>
+						<FolderTree root={root} currentDir={dir} onNavigate={(d) => void reload(root, d)} />
+					</aside>
 
-				<section className="bg-white border-2 border-blue-100 rounded-2xl p-4 min-h-[420px]">
-					<div className="flex flex-col gap-3">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<div className="flex flex-wrap items-center gap-2">
-								{breadcrumbs.map((b, i) => (
-									<button
-										key={b.rel || 'root'}
-										type="button"
-										onClick={() => void reload(b.rel)}
-										className={`text-sm font-semibold ${
-											i === breadcrumbs.length - 1
-												? 'text-blue-900'
-												: 'text-blue-600 hover:text-blue-800'
-										}`}
-									>
-										{i === 0 ? b.label : `/${b.label}`}
-									</button>
-								))}
-							</div>
-
-							<div className="flex items-center gap-2">
-								<AdminButton
-									size="sm"
-									variant="secondary"
-									onClick={() => setCreatingFolder((v) => !v)}
+					<section className="bg-white border-2 border-blue-100 rounded-2xl p-4 min-h-[480px]">
+						<div className="flex flex-wrap items-center gap-2 mb-3">
+							{breadcrumbs.map((b, i) => (
+								<button
+									key={`${b.rel}-${i}`}
+									type="button"
+									onClick={() => void reload(root, b.rel)}
+									className={`text-sm font-semibold ${
+										i === breadcrumbs.length - 1
+											? 'text-blue-900'
+											: 'text-blue-600 hover:text-blue-800'
+									}`}
 								>
-									+ Папка
-								</AdminButton>
-								<AdminButton
-									size="sm"
-									variant="primary"
-									disabled={uploading}
-									onClick={() => fileInputRef.current?.click()}
-								>
-									{uploading ? 'Загрузка…' : '+ Файл'}
-								</AdminButton>
-								<input
-									ref={fileInputRef}
-									type="file"
-									multiple
-									className="hidden"
-									onChange={(e) =>
-										void handleUploadFiles(Array.from(e.target.files ?? []))
-									}
-								/>
-							</div>
+									/{b.label}
+								</button>
+							))}
+						</div>
+
+						<div className="flex flex-wrap gap-2 mb-4">
+							<AdminButton size="sm" variant="secondary" onClick={() => setCreatingFolder((v) => !v)}>
+								+ Папка
+							</AdminButton>
+							<AdminButton
+								size="sm"
+								variant="primary"
+								disabled={uploading}
+								onClick={() => fileInputRef.current?.click()}
+							>
+								{uploading ? 'Загрузка…' : '+ Файл'}
+							</AdminButton>
+							<input
+								ref={fileInputRef}
+								type="file"
+								multiple
+								className="hidden"
+								onChange={(e) => void handleUploadFiles(Array.from(e.target.files ?? []))}
+							/>
 						</div>
 
 						{creatingFolder && (
-							<div className="flex flex-wrap items-end gap-2 rounded-2xl border-2 border-blue-50 bg-blue-50/40 p-3">
-								<label className="flex-1 min-w-64">
-									<div className="text-xs font-semibold text-blue-700 mb-1">
-										Новая папка
-									</div>
-									<input
-										className={adminInputClass}
-										value={newFolderName}
-										onChange={(e) => setNewFolderName(e.target.value)}
-										placeholder="например: rectors"
-									/>
-								</label>
-								<AdminButton
-									size="sm"
-									variant="primary"
-									onClick={() => void handleCreateFolder()}
-								>
-									Создать
-								</AdminButton>
-							</div>
-						)}
-
-						<div className="flex flex-wrap items-end gap-2 rounded-2xl border-2 border-blue-50 bg-blue-50/40 p-3">
-							<label className="flex-1 min-w-64">
-								<div className="text-xs font-semibold text-blue-700 mb-1">
-									Загрузка по URL
-								</div>
+							<form
+								className="flex flex-wrap gap-2 mb-3 p-3 rounded-xl bg-blue-50/50 border border-blue-100"
+								onSubmit={(e) => {
+									e.preventDefault();
+									void handleCreateFolder();
+								}}
+							>
 								<input
 									className={adminInputClass}
-									value={urlToUpload}
-									onChange={(e) => setUrlToUpload(e.target.value)}
-									placeholder="https://..."
+									value={newFolderName}
+									onChange={(e) => setNewFolderName(e.target.value)}
+									placeholder="имя подпапки"
 								/>
-							</label>
+								<AdminButton size="sm" type="submit" variant="primary">
+									Создать
+								</AdminButton>
+							</form>
+						)}
+
+						<div className="flex flex-wrap gap-2 mb-4 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+							<input
+								className={`${adminInputClass} flex-1 min-w-48`}
+								value={urlToUpload}
+								onChange={(e) => setUrlToUpload(e.target.value)}
+								placeholder="Ссылка: https://… или путь к файлу"
+							/>
 							<AdminButton
 								size="sm"
 								variant="secondary"
 								disabled={uploading}
 								onClick={() => void handleUploadByUrl()}
 							>
-								Скачать
+								Добавить ссылку
 							</AdminButton>
 						</div>
 
 						{error && (
-							<div className="text-sm text-red-600 border border-red-200 bg-red-50 rounded-xl p-2">
+							<div className="text-sm text-red-600 border border-red-200 bg-red-50 rounded-xl p-2 mb-3">
 								{error}
 							</div>
 						)}
 
 						<div
-							onDrop={(e) => void handleDropUpload(e)}
-							onDragOver={handleDragOver}
-							className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/30 p-4"
+							className="rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/20 p-4"
+							onDrop={(e) => {
+								e.preventDefault();
+								void handleUploadFiles(Array.from(e.dataTransfer.files ?? []));
+							}}
+							onDragOver={(e) => e.preventDefault()}
 						>
-							<div className="text-sm text-blue-800 font-semibold">
-								Файлы в текущей папке
-							</div>
-							<div className="text-xs text-blue-500 mt-1">
-								Можно перетащить файлы сюда для загрузки (desktop). Для перемещения внутри
-								дерева используйте drag-and-drop по папкам.
-							</div>
-
-							<div className="mt-3">
-								{loading ? (
-									<div className="text-blue-600">Загрузка…</div>
-								) : entries.length === 0 ? (
-									<div className="text-gray-400 text-sm">Папка пустая.</div>
-								) : (
-									<div className="flex flex-col gap-2">
-										{parentDir !== dir && (
-											<button
-												type="button"
-												onClick={() => void reload(parentDir)}
-												className="flex items-center gap-2 px-3 py-2 rounded-xl border border-blue-100 hover:bg-blue-50 text-left"
-											>
-												<span className="text-blue-700">↩</span>
-												<span className="text-sm text-blue-800 font-semibold">..</span>
-											</button>
-										)}
-										{entries.map((e) => (
-											<EntryRow
-												key={e.relPath}
-												entry={e}
-												onNavigate={(d) => void reload(d)}
-												onDelete={() => void handleDelete(e.relPath)}
-												onRename={async (newName) => {
-													const res = await renamePath(e.relPath, newName);
-													await reload(relDirOf(res.path));
-												}}
-												onPick={
-													onPick && (!allowPick || allowPick.has(e.kind))
-														? (url) => onPick(url, e)
-														: undefined
-												}
-											/>
-										))}
-									</div>
-								)}
-							</div>
+							{loading ? (
+								<div className="text-blue-600">Загрузка…</div>
+							) : entries.length === 0 ? (
+								<div className="text-gray-400 text-sm">Папка пустая</div>
+							) : (
+								<div className="flex flex-col gap-2">
+									{dir && (
+										<button
+											type="button"
+											onClick={() => void reload(root, parentDir)}
+											className="text-left text-sm text-blue-700 font-semibold px-2 py-1"
+										>
+											↩ ..
+										</button>
+									)}
+									{entries.map((e) => (
+										<EntryRow
+											key={e.relPath}
+											root={root}
+											entry={e}
+											onNavigate={(d) => void reload(root, d)}
+											onDelete={() => void deleteMediaPath(root, e.relPath).then(() => reload(root, dir))}
+											onRename={async (newName) => {
+												await renameMediaPath(root, e.relPath, newName);
+												await reload(root, relDirOf(e.relPath));
+											}}
+											onEditAsset={(asset) => setEditingAsset({ entry: e, asset })}
+											onPick={
+												onPick && (!allowPick || allowPick.has(e.kind))
+													? (url) => onPick(url, e, root)
+													: undefined
+											}
+										/>
+									))}
+								</div>
+							)}
 						</div>
-					</div>
-				</section>
+					</section>
+				</div>
+
+				{editingAsset && (
+					<AssetEditor
+						root={root}
+						entry={editingAsset.entry}
+						asset={editingAsset.asset}
+						onClose={() => setEditingAsset(null)}
+						onSaved={() => void reload(root, dir).then(() => setEditingAsset(null))}
+					/>
+				)}
 			</div>
 		</DndContext>
 	);
 }
 
+function AssetEditor({
+	root,
+	entry,
+	asset,
+	onClose,
+	onSaved,
+}: {
+	root: MediaRoot;
+	entry: MediaBrowseEntry;
+	asset: MediaBrowseAsset;
+	onClose: () => void;
+	onSaved: () => void;
+}) {
+	const [title, setTitle] = useState(asset.title ?? entry.name);
+	const [showPhoto, setShowPhoto] = useState(asset.showInPhotoGallery);
+	const [showVideo, setShowVideo] = useState(asset.showInVideoGallery);
+	const [year, setYear] = useState(String(asset.year ?? new Date().getFullYear()));
+	const [annotation, setAnnotation] = useState(asset.annotation);
+	const [description, setDescription] = useState(asset.description);
+	const [tags, setTags] = useState(asset.tags.join(', '));
+	const [duration, setDuration] = useState(asset.duration ?? '');
+	const [busy, setBusy] = useState(false);
+	const [err, setErr] = useState<string | null>(null);
+
+	const url = entry.url ?? publicUrlFor(root, entry.relPath);
+	const isImage = asset.mimeType.startsWith('image/');
+	const isVideo = asset.mimeType.startsWith('video/');
+
+	const save = async () => {
+		setBusy(true);
+		setErr(null);
+		try {
+			await updateMediaAsset(asset.id, {
+				title: title.trim(),
+				showInPhotoGallery: showPhoto,
+				showInVideoGallery: showVideo,
+				year: isImage ? Number(year) || 0 : undefined,
+				annotation: isImage ? annotation : undefined,
+				description: isVideo ? description : undefined,
+				tags: isVideo
+					? tags
+							.split(',')
+							.map((t) => t.trim())
+							.filter(Boolean)
+					: undefined,
+				duration: isVideo ? duration || null : undefined,
+				is_external: asset.is_external,
+			});
+			onSaved();
+		} catch (e) {
+			setErr(errorMessage(e, 'Не удалось сохранить'));
+		} finally {
+			setBusy(false);
+		}
+	};
+
+	return (
+		<div className="bg-white border-2 border-blue-200 rounded-2xl p-5 shadow-lg">
+			<div className="flex items-start justify-between gap-4 mb-4">
+				<div>
+					<h3 className="text-blue-900 font-bold">Свойства файла</h3>
+					<p className="text-xs text-gray-400 mt-1 break-all">{url}</p>
+				</div>
+				<AdminButton size="sm" variant="secondary" onClick={onClose}>
+					Закрыть
+				</AdminButton>
+			</div>
+
+			{err && <p className="text-sm text-red-600 mb-3">{err}</p>}
+
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+				<div className="flex flex-col gap-3">
+					{isImage && (
+						<img
+							src={url}
+							alt={title}
+							className="w-full max-h-48 object-contain rounded-xl border border-blue-100 bg-blue-50"
+						/>
+					)}
+					<label>
+						<span className={adminLabelClass}>Название</span>
+						<input className={adminInputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
+					</label>
+					<label className="flex items-center gap-2 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={showPhoto}
+							onChange={(e) => setShowPhoto(e.target.checked)}
+							className="w-4 h-4"
+						/>
+						<span className="text-sm font-semibold text-blue-800">Показывать в фотогалерее</span>
+					</label>
+					<label className="flex items-center gap-2 cursor-pointer">
+						<input
+							type="checkbox"
+							checked={showVideo}
+							onChange={(e) => setShowVideo(e.target.checked)}
+							className="w-4 h-4"
+						/>
+						<span className="text-sm font-semibold text-blue-800">Показывать в видеогалерее</span>
+					</label>
+				</div>
+
+				<div className="flex flex-col gap-3">
+					{isImage && (
+						<>
+							<label>
+								<span className={adminLabelClass}>Год (фотогалерея)</span>
+								<input
+									className={adminInputClass}
+									type="number"
+									value={year}
+									onChange={(e) => setYear(e.target.value)}
+								/>
+							</label>
+							<label>
+								<span className={adminLabelClass}>Подпись</span>
+								<textarea
+									className={`${adminInputClass} h-20 resize-none`}
+									value={annotation}
+									onChange={(e) => setAnnotation(e.target.value)}
+								/>
+							</label>
+						</>
+					)}
+					{isVideo && (
+						<>
+							<label>
+								<span className={adminLabelClass}>Описание</span>
+								<textarea
+									className={`${adminInputClass} h-20 resize-none`}
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+								/>
+							</label>
+							<label>
+								<span className={adminLabelClass}>Теги (через запятую)</span>
+								<input className={adminInputClass} value={tags} onChange={(e) => setTags(e.target.value)} />
+							</label>
+							<label>
+								<span className={adminLabelClass}>Длительность</span>
+								<input
+									className={adminInputClass}
+									value={duration}
+									onChange={(e) => setDuration(e.target.value)}
+									placeholder="12:34"
+								/>
+							</label>
+						</>
+					)}
+					{!isImage && !isVideo && (
+						<p className="text-sm text-gray-500">
+							Документ доступен по ссылке. Галереи — только для фото и видео.
+						</p>
+					)}
+				</div>
+			</div>
+
+			<div className="flex gap-2 mt-4">
+				<AdminButton variant="primary" disabled={busy} onClick={() => void save()}>
+					{busy ? 'Сохранение…' : 'Сохранить'}
+				</AdminButton>
+			</div>
+		</div>
+	);
+}
+
 function EntryRow({
+	root,
 	entry,
 	onNavigate,
 	onDelete,
 	onRename,
+	onEditAsset,
 	onPick,
 }: {
-	entry: FileManagerEntry;
+	root: MediaRoot;
+	entry: MediaBrowseEntry;
 	onNavigate: (dir: string) => void;
 	onDelete: () => void;
 	onRename: (newName: string) => Promise<void>;
+	onEditAsset: (asset: MediaBrowseAsset) => void;
 	onPick?: (url: string) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
 	const [name, setName] = useState(entry.name);
 	const [busy, setBusy] = useState(false);
 
-	useEffect(() => {
-		setName(entry.name);
-		setRenaming(false);
-		setBusy(false);
-	}, [entry.name, entry.relPath]);
-
 	const isFolder = entry.kind === 'dir';
-	const url = `/images/${entry.relPath}`;
+	const url = entry.url ?? publicUrlFor(root, entry.relPath);
 
-	const drag = useDraggable({ id: entry.relPath });
-	const drop = useDroppable({ id: `dir:${entry.relPath}` });
-
-	const handleOpen = () => {
-		if (!isFolder) return;
-		onNavigate(entry.relPath);
-	};
+	const drag = useDraggable({ id: entry.relPath, disabled: isFolder });
+	const drop = useDroppable({ id: `dir:${entry.relPath}`, disabled: !isFolder });
 
 	return (
 		<div
 			ref={drag.setNodeRef}
-			{...drag.listeners}
-			{...drag.attributes}
-			className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-blue-100 bg-white hover:bg-blue-50 transition-all ${
+			{...(!isFolder ? drag.listeners : {})}
+			{...(!isFolder ? drag.attributes : {})}
+			className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-blue-100 bg-white ${
 				drag.isDragging ? 'opacity-60' : ''
 			}`}
 		>
-			<div className="w-8 text-center shrink-0">{isFolder ? '📁' : '📄'}</div>
-
+			<span className="w-8 text-center shrink-0">{isFolder ? '📁' : '📄'}</span>
 			<div className="flex-1 min-w-0">
 				{renaming ? (
-					<div className="flex items-center gap-2">
+					<div className="flex gap-2">
 						<input
 							className={adminInputClass}
 							value={name}
@@ -410,7 +570,6 @@ function EntryRow({
 						/>
 						<AdminButton
 							size="sm"
-							variant="primary"
 							disabled={busy}
 							onClick={() => {
 								const next = name.trim();
@@ -421,157 +580,116 @@ function EntryRow({
 						>
 							OK
 						</AdminButton>
-						<AdminButton size="sm" variant="secondary" onClick={() => setRenaming(false)}>
-							Отмена
-						</AdminButton>
 					</div>
 				) : (
 					<button
 						type="button"
-						onClick={handleOpen}
-						className={`w-full text-left text-sm font-semibold truncate ${
-							isFolder ? 'text-blue-800' : 'text-gray-800'
-						}`}
+						onClick={() => isFolder && onNavigate(entry.relPath)}
+						className="text-sm font-semibold text-blue-800 truncate block text-left w-full"
 					>
 						{entry.name}
 					</button>
 				)}
 				{!isFolder && (
-					<div className="text-xs text-gray-400 truncate">{url}</div>
+					<div className="text-xs text-gray-400 truncate flex flex-wrap gap-2 mt-0.5">
+						<span>{url}</span>
+						{entry.asset?.showInPhotoGallery && (
+							<span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 rounded">фото</span>
+						)}
+						{entry.asset?.showInVideoGallery && (
+							<span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 rounded">видео</span>
+						)}
+					</div>
 				)}
 			</div>
-
-			<div className="flex items-center gap-2 shrink-0">
+			<div className="flex gap-1 shrink-0">
 				{onPick && !isFolder && (
 					<AdminButton size="sm" variant="primary" onClick={() => onPick(url)}>
 						Выбрать
 					</AdminButton>
 				)}
-				{isFolder && (
-					<FolderDropTarget active={drop.isOver} setNodeRef={drop.setNodeRef} />
+				{!isFolder && entry.asset && (
+					<AdminButton size="sm" variant="secondary" onClick={() => onEditAsset(entry.asset!)}>
+						Свойства
+					</AdminButton>
 				)}
+				{isFolder && <div ref={drop.setNodeRef} className="text-[10px] text-blue-400 px-1">drop</div>}
 				<AdminButton size="sm" variant="secondary" onClick={() => setRenaming(true)}>
-					Переимен.
+					…
 				</AdminButton>
 				<AdminButton size="sm" variant="danger" onClick={onDelete}>
-					Удалить
+					✕
 				</AdminButton>
 			</div>
 		</div>
 	);
 }
 
-function FolderDropTarget({
-	active,
-	setNodeRef,
-}: {
-	active: boolean;
-	setNodeRef: (el: HTMLElement | null) => void;
-}) {
-	return (
-		<div
-			ref={setNodeRef}
-			className={`px-2 py-1 rounded-lg text-xs font-semibold border ${
-				active ? 'bg-blue-700 text-white border-blue-700' : 'bg-blue-50 text-blue-700 border-blue-100'
-			}`}
-		>
-			Drop
-		</div>
-	);
-}
-
-function TreeRoot({
+function FolderTree({
+	root,
 	currentDir,
 	onNavigate,
 }: {
+	root: MediaRoot;
 	currentDir: string;
 	onNavigate: (dir: string) => void;
 }) {
 	return (
-		<div className="flex flex-col gap-1">
-			<TreeNode rel="" label="images" currentDir={currentDir} onNavigate={onNavigate} />
-		</div>
+		<TreeNode rel="" label={root} mediaRoot={root} currentDir={currentDir} onNavigate={onNavigate} />
 	);
 }
 
 function TreeNode({
 	rel,
 	label,
+	mediaRoot,
 	currentDir,
 	onNavigate,
 }: {
 	rel: string;
 	label: string;
+	mediaRoot: MediaRoot;
 	currentDir: string;
 	onNavigate: (dir: string) => void;
 }) {
 	const [open, setOpen] = useState(true);
 	const [loading, setLoading] = useState(false);
-	const [childDirs, setChildDirs] = useState<FileManagerEntry[]>([]);
-
+	const [childDirs, setChildDirs] = useState<MediaBrowseEntry[]>([]);
 	const active = currentDir === rel || (rel !== '' && currentDir.startsWith(`${rel}/`));
-
 	const droppable = useDroppable({ id: `dir:${rel}` });
-
-	const loadChildren = async () => {
-		setLoading(true);
-		try {
-			const res = await fetchFilesIndex(rel);
-			setChildDirs(res.entries.filter(isDir));
-		} finally {
-			setLoading(false);
-		}
-	};
 
 	useEffect(() => {
 		if (!open) return;
-		void loadChildren();
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [open, rel]);
+		setLoading(true);
+		void browseMedia(mediaRoot, rel)
+			.then((res) => setChildDirs(res.entries.filter(isDir)))
+			.finally(() => setLoading(false));
+	}, [open, rel, mediaRoot]);
 
 	return (
-		<div className="select-none">
+		<div>
 			<div
 				ref={droppable.setNodeRef}
-				className={`flex items-center gap-2 px-2 py-1.5 rounded-xl border ${
-					active ? 'border-blue-300 bg-blue-50' : 'border-transparent hover:bg-blue-50'
-				}`}
+				className={`flex items-center gap-1 px-2 py-1 rounded-lg ${active ? 'bg-blue-100' : 'hover:bg-blue-50'}`}
 			>
-				<button
-					type="button"
-					onClick={() => setOpen((v) => !v)}
-					className="w-6 h-6 rounded-lg border border-blue-100 bg-white text-blue-700 text-xs font-bold"
-				>
-					{open ? '–' : '+'}
+				<button type="button" onClick={() => setOpen((v) => !v)} className="w-5 text-blue-700 text-xs">
+					{open ? '−' : '+'}
 				</button>
-				<button
-					type="button"
-					onClick={() => onNavigate(rel)}
-					className={`flex-1 text-left text-sm font-semibold ${
-						active ? 'text-blue-900' : 'text-blue-700'
-					}`}
-				>
+				<button type="button" onClick={() => onNavigate(rel)} className="text-sm font-semibold text-blue-800">
 					{label}
 				</button>
-				{droppable.isOver && (
-					<span className="text-[10px] font-bold text-white bg-blue-700 rounded-md px-1.5 py-0.5">
-						DROP
-					</span>
-				)}
 			</div>
-
 			{open && (
-				<div className="ml-6 mt-1 flex flex-col gap-1">
+				<div className="ml-4 mt-1">
 					{loading ? (
-						<div className="text-xs text-gray-400 px-2">Загрузка…</div>
-					) : childDirs.length === 0 ? (
-						<div className="text-xs text-gray-400 px-2">Нет подпапок</div>
+						<div className="text-xs text-gray-400">…</div>
 					) : (
 						childDirs.map((d) => (
 							<TreeNode
 								key={d.relPath}
 								rel={d.relPath}
-								label={baseNameOf(d.relPath)}
+								label={d.name}
+								mediaRoot={mediaRoot}
 								currentDir={currentDir}
 								onNavigate={onNavigate}
 							/>
@@ -582,4 +700,3 @@ function TreeNode({
 		</div>
 	);
 }
-

@@ -1,12 +1,10 @@
-import { apiRequest } from '../shared/api/client';
+/** @deprecated Используйте `searchMedia` из `api/media.ts` */
+import { searchMedia, type MediaRoot } from './media';
 
-export type ImagesIndex = {
-	files: string[];
-	baseUrl: string;
-};
-
-export async function fetchImagesIndex(query?: string): Promise<ImagesIndex> {
-	const q = query?.trim();
-	const suffix = q ? `?q=${encodeURIComponent(q)}` : '';
-	return apiRequest<ImagesIndex>(`/images${suffix}`);
+export async function fetchImagesIndex(q: string, root: MediaRoot = 'images') {
+	const data = await searchMedia(root, q);
+	return {
+		files: data.files.map((f) => f.name),
+		baseUrl: `/${root}/`,
+	};
 }

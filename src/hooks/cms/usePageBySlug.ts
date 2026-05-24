@@ -1,73 +1,70 @@
-import { useCallback, useEffect, useState } from 'react';
-import { fetchPageByPath, fetchPageBySlug, type PageDto } from '../../api/pages';
-import { ApiError } from '../../shared/api/client';
-
-export function usePageBySlug(slug: string) {
-	const [page, setPage] = useState<PageDto | null>(null);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
-
-	const load = useCallback(async () => {
-		try {
-			setLoading(true);
-			setError(null);
-			setPage(await fetchPageBySlug(slug));
-		} catch (error) {
-			setError(error instanceof ApiError ? error.message : 'Не удалось загрузить страницу');
-			setPage(null);
-		} finally {
-			setLoading(false);
-		}
-	}, [slug]);
-
-	useEffect(() => {
-		void load();
-	}, [load]);
-
-	return { page, loading, error, reload: load };
-}
+import { useEffect, useState } from 'react';
+import { fetchPublicPageByPath, type PublicPage } from '../../api/pages';
 
 export function usePageByPath(path: string) {
-	const [page, setPage] = useState<PageDto | null>(null);
+	const [page, setPage] = useState<PublicPage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	const load = useCallback(async () => {
-		try {
-			setLoading(true);
-			setError(null);
-			const normalized = path.trim().replace(/^\/+|\/+$/g, '');
-			if (!normalized) {
-				setPage(null);
-				return;
-			}
-			setPage(await fetchPageByPath(normalized));
-		} catch (error) {
-			// Backward compatibility: try legacy slug resolution for old records.
-			try {
-				const fallback = path
-					.trim()
-					.replace(/\/+$/g, '')
-					.split('/')
-					.filter(Boolean)
-					.pop();
-				if (!fallback) throw error;
-				setPage(await fetchPageBySlug(fallback));
-				setError(null);
-			} catch (fallbackErr) {
-				setError(
-					fallbackErr instanceof ApiError ? fallbackErr.message : 'Не удалось загрузить страницу',
-				);
-				setPage(null);
-			}
-		} finally {
-			setLoading(false);
-		}
+	useEffect(() => {
+		let cancelled = false;
+		setLoading(true);
+		setError(null);
+
+		void fetchPublicPageByPath(path)
+			.then((data) => {
+				if (!cancelled) setPage(data);
+			})
+			.catch((err: unknown) => {
+				if (!cancelled) {
+					setPage(null);
+					setError(err instanceof Error ? err.message : 'Не удалось загрузить страницу');
+				}
+			})
+			.finally(() => {
+				if (!cancelled) setLoading(false);
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, [path]);
 
-	useEffect(() => {
-		void load();
-	}, [load]);
+	return { page, loading, error };
+}
 
-	return { page, loading, error, reload: load };
+/** @deprecated use usePageByPath */
+export const usePageBySlug = usePageByPath;
+
+export function usePublishedPageBySlug(slug: string) {
+	const [page, setPage] = useState<PublicPage | null>(null);
+	const [loading, setLoading] = useState(true);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		setLoading(true);
+		setError(null);
+
+		void import('../../api/pages')
+			.then(({ fetchPublicPageBySlug }) => fetchPublicPageBySlug(slug))
+			.then((data) => {
+				if (!cancelled) setPage(data);
+			})
+			.catch((err: unknown) => {
+				if (!cancelled) {
+					setPage(null);
+					setError(err instanceof Error ? err.message : 'Не удалось загрузить страницу');
+				}
+			})
+			.finally(() => {
+				if (!cancelled) setLoading(false);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [slug]);
+
+	return { page, loading, error };
 }

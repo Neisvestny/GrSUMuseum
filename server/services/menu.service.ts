@@ -1,6 +1,6 @@
-import type { menu_items, PrismaClient } from '../generated/prisma/client.js';
-import { HttpError } from '../shared/errors';
-import type { MenuItemRow } from '../types';
+import type { MenuItem, PrismaClient } from '../generated/prisma/client.js';
+import { HttpError } from '../shared/errors.js';
+import type { MenuItemRow } from '../types/index.js';
 
 interface MenuItemInput {
 	section?: string;
@@ -14,48 +14,51 @@ export class MenuService {
 	constructor(private prisma: PrismaClient) {}
 
 	async listBySection(section: string, includeInactive = false): Promise<MenuItemRow[]> {
-		const rows = await this.prisma.menu_items.findMany({
+		const rows = await this.prisma.menuItem.findMany({
 			where: {
 				section,
-				...(includeInactive ? {} : { is_active: true }),
+				parentId: null,
+				...(includeInactive ? {} : { isActive: true }),
 			},
 			orderBy: { position: 'asc' },
 		});
-		return rows.map(this.toRow);
+		return rows.map((r) => this.toRow(r));
 	}
 
 	async listAll(): Promise<MenuItemRow[]> {
-		const rows = await this.prisma.menu_items.findMany({
+		const rows = await this.prisma.menuItem.findMany({
 			orderBy: [{ section: 'asc' }, { position: 'asc' }],
 		});
-		return rows.map(this.toRow);
+		return rows.map((r) => this.toRow(r));
 	}
 
 	async create(data: MenuItemInput): Promise<MenuItemRow> {
 		const section = (data.section ?? '').trim();
 		const label = (data.label ?? '').trim();
+		const path = (data.path ?? '').trim();
 		if (!section) throw new HttpError(400, 'section обязателен');
 		if (!label) throw new HttpError(400, 'label обязателен');
+		if (!path) throw new HttpError(400, 'path обязателен');
 
 		return this.prisma.$transaction(async (tx) => {
-			const count = await tx.menu_items.count({ where: { section } });
+			const count = await tx.menuItem.count({ where: { section, parentId: null } });
 			const insertPos =
 				data.position !== undefined
-					? Math.max(1, Math.min(Number(data.position), count + 1))
-					: count + 1;
+					? Math.max(0, Math.min(Number(data.position), count))
+					: count;
 
-			await tx.menu_items.updateMany({
-				where: { section, position: { gte: insertPos } },
+			await tx.menuItem.updateMany({
+				where: { section, parentId: null, position: { gte: insertPos } },
 				data: { position: { increment: 1 } },
 			});
 
-			const row = await tx.menu_items.create({
+			const row = await tx.menuItem.create({
 				data: {
 					section,
 					position: insertPos,
 					label,
-					path: data.path ?? '',
-					is_active: data.is_active ?? true,
+					path,
+					isActive: data.is_active ?? true,
 				},
 			});
 			return this.toRow(row);
@@ -64,7 +67,7 @@ export class MenuService {
 
 	async update(id: number, data: MenuItemInput): Promise<MenuItemRow | null> {
 		return this.prisma.$transaction(async (tx) => {
-			const current = await tx.menu_items.findUnique({ where: { id } });
+			const current = await tx.menuItem.findUnique({ where: { id } });
 			if (!current) return null;
 
 			if (data.section !== undefined && data.section !== current.section) {
@@ -72,69 +75,78 @@ export class MenuService {
 			}
 
 			if (data.position !== undefined && Number(data.position) !== current.position) {
-				const count = await tx.menu_items.count({ where: { section: current.section } });
-				const targetPos = Math.max(1, Math.min(Number(data.position), count));
+				const count = await tx.menuItem.count({
+					where: { section: current.section, parentId: current.parentId },
+				});
+				const targetPos = Math.max(0, Math.min(Number(data.position), count - 1));
 
-				await tx.menu_items.update({ where: { id }, data: { position: 0 } });
+				await tx.menuItem.update({ where: { id }, data: { position: -1 } });
 				if (targetPos > current.position) {
-					await tx.menu_items.updateMany({
+					await tx.menuItem.updateMany({
 						where: {
 							section: current.section,
+							parentId: current.parentId,
 							position: { gt: current.position, lte: targetPos },
 						},
 						data: { position: { decrement: 1 } },
 					});
 				} else {
-					await tx.menu_items.updateMany({
+					await tx.menuItem.updateMany({
 						where: {
 							section: current.section,
+							parentId: current.parentId,
 							position: { gte: targetPos, lt: current.position },
 						},
 						data: { position: { increment: 1 } },
 					});
 				}
-				await tx.menu_items.update({ where: { id }, data: { position: targetPos } });
+				await tx.menuItem.update({ where: { id }, data: { position: targetPos } });
 			}
 
-			await tx.menu_items.update({
+			await tx.menuItem.update({
 				where: { id },
 				data: {
 					label: data.label ?? undefined,
-					path: data.path ?? undefined,
-					is_active: data.is_active ?? undefined,
+					path: data.path?.trim() || undefined,
+					isActive: data.is_active ?? undefined,
 				},
 			});
 
-			const fresh = await tx.menu_items.findUnique({ where: { id } });
+			const fresh = await tx.menuItem.findUnique({ where: { id } });
 			return fresh ? this.toRow(fresh) : null;
 		});
 	}
 
 	async delete(id: number): Promise<boolean> {
 		return this.prisma.$transaction(async (tx) => {
-			const existing = await tx.menu_items.findUnique({
+			const existing = await tx.menuItem.findUnique({
 				where: { id },
-				select: { id: true, section: true, position: true },
+				select: { id: true, section: true, position: true, parentId: true },
 			});
 			if (!existing) return false;
 
-			await tx.menu_items.delete({ where: { id } });
-			await tx.menu_items.updateMany({
-				where: { section: existing.section, position: { gt: existing.position } },
+			await tx.menuItem.delete({ where: { id } });
+			await tx.menuItem.updateMany({
+				where: {
+					section: existing.section,
+					parentId: existing.parentId,
+					position: { gt: existing.position },
+				},
 				data: { position: { decrement: 1 } },
 			});
 			return true;
 		});
 	}
 
-	private toRow(r: menu_items): MenuItemRow {
+	private toRow(r: MenuItem): MenuItemRow {
 		return {
 			id: r.id,
+			parentId: r.parentId,
 			section: r.section,
 			position: r.position,
 			label: r.label,
 			path: r.path,
-			is_active: r.is_active,
+			is_active: r.isActive,
 		};
 	}
 }

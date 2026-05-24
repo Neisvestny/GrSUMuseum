@@ -11,10 +11,16 @@ function isExternalUrl(value: string) {
 
 function normalizeLocalValue(raw: string) {
 	const v = raw.trim();
-	if (!v) return { display: '', stored: '' };
-	if (isExternalUrl(v)) return { display: v, stored: v };
-	const cleaned = v.replace(/^\/?images\//i, '').replace(/^\//, '');
-	return { display: cleaned, stored: `/images/${cleaned}` };
+	if (!v) return { display: '', stored: '', prefix: '/images/' as const };
+	if (isExternalUrl(v)) return { display: v, stored: v, prefix: '' as const };
+	const rooted = v.match(/^\/?(images|videos|files)\/(.*)$/i);
+	if (rooted) {
+		const root = rooted[1].toLowerCase();
+		const rest = rooted[2] ?? '';
+		return { display: rest, stored: `/${root}/${rest}`, prefix: `/${root}/` as const };
+	}
+	const cleaned = v.replace(/^\//, '');
+	return { display: cleaned, stored: `/images/${cleaned}`, prefix: '/images/' as const };
 }
 
 export default function ImagePathInput({
@@ -82,12 +88,12 @@ export default function ImagePathInput({
 			<label className="block">
 				<span className={adminLabelClass}>
 					{label}{' '}
-					<span className="text-gray-400 font-normal">(URL или файл из /images)</span>
+					<span className="text-gray-400 font-normal">(URL или /images, /videos, /files)</span>
 				</span>
 				<div className="flex items-stretch gap-2">
-					{!isExternalUrl(value ?? '') && (
+					{!isExternalUrl(value ?? '') && normalized.prefix && (
 						<div className="px-4 whitespace-nowrap flex items-center rounded-xl border-2 border-blue-200 bg-blue-50 text-blue-700 text-sm font-semibold select-none">
-							/images/
+							{normalized.prefix}
 						</div>
 					)}
 					<input
@@ -115,7 +121,7 @@ export default function ImagePathInput({
 			{showSuggestions && (
 				<div className="absolute z-30 mt-2 w-full rounded-2xl border-2 border-blue-100 bg-white shadow-lg overflow-hidden">
 					<div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-blue-50">
-						{busy ? 'Поиск изображений…' : 'Изображения в /images'}
+						{busy ? 'Поиск…' : 'Файлы в медиатеке'}
 					</div>
 					{suggestions.length === 0 && !busy ? (
 						<div className="px-4 py-3 text-sm text-gray-400">Ничего не найдено</div>

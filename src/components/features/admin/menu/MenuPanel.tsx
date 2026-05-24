@@ -8,6 +8,7 @@ import {
 } from '../../../../api/menu';
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
+import AdminCreateForm from '../ui/AdminCreateForm';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
 import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
@@ -104,7 +105,11 @@ export default function MenuPanel() {
 			{error && <ErrorBox msg={error} />}
 			<div className="bg-white border-2 border-blue-100 rounded-2xl p-4">
 				<h3 className="text-blue-800 font-bold mb-2">Добавить пункт меню</h3>
-				<div className="grid grid-cols-[140px_1fr_1fr_auto] gap-2 items-end">
+				<AdminCreateForm
+					onSubmit={add}
+					submitLabel="Создать"
+					className="grid grid-cols-[140px_1fr_1fr_auto] gap-2 items-end !flex-nowrap"
+				>
 					<label>
 						<span className={adminLabelClass}>Секция (slug)</span>
 						<input
@@ -136,10 +141,7 @@ export default function MenuPanel() {
 							onChange={(e) => setPath(e.target.value)}
 						/>
 					</label>
-					<AdminButton onClick={() => void add()} variant="primary">
-						Создать
-					</AdminButton>
-				</div>
+				</AdminCreateForm>
 			</div>
 
 			{grouped.map((group) => (

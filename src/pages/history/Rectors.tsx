@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRectors } from '../../hooks/useRectors';
+import { PEOPLE_ROLES } from '../../lib/people-roles';
+import { usePeopleByRole } from '../../hooks/usePeople';
 import MainLayout from '../../layouts/MainLayout';
 
 export default function Rectors() {
-	const { rectors, loading } = useRectors();
+	const { people, loading } = usePeopleByRole(PEOPLE_ROLES.rector);
 	const navigate = useNavigate();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [atBottom, setAtBottom] = useState(false);
@@ -22,18 +23,20 @@ export default function Rectors() {
 		el.addEventListener('scroll', handleScroll);
 		return () => el.removeEventListener('scroll', handleScroll);
 	}, []);
+
 	if (loading) return <div>Загрузка...</div>;
+
 	return (
 		<MainLayout title="Ректоры ГрГУ" scrollRef={scrollRef}>
 			<div className="relative max-w-6xl mx-auto hidden md:block">
 				<div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-0.5 bg-blue-200" />
 
 				<div className="flex flex-col gap-16">
-					{rectors.map((rector, i) => {
+					{people.map((person, i) => {
 						const isLeft = i % 2 === 0;
 						return (
 							<motion.div
-								key={rector.id}
+								key={person.id}
 								initial={{ opacity: 0, x: isLeft ? -50 : 50 }}
 								whileInView={{ opacity: 1, x: 0 }}
 								viewport={{ once: true, margin: '-60px' }}
@@ -41,7 +44,7 @@ export default function Rectors() {
 								className={`relative flex items-center ${isLeft ? 'flex-row' : 'flex-row-reverse'}`}
 							>
 								<button
-									onClick={() => navigate(`/history/rectors/${rector.id}`)}
+									onClick={() => navigate(`/history/rectors/${person.id}`)}
 									className="
                                     w-[calc(50%-2.5rem)] flex gap-6 items-center
                                     bg-white/80 backdrop-blur-sm
@@ -52,25 +55,27 @@ export default function Rectors() {
                                 "
 								>
 									<div className="w-32 h-32 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
-										<img
-											src={rector.img}
-											alt={rector.name}
-											className="w-full h-full object-cover"
-											onError={(e) => {
-												(e.target as HTMLImageElement).style.display =
-													'none';
-											}}
-										/>
+										{person.img ? (
+											<img
+												src={person.img}
+												alt={person.displayName}
+												className="w-full h-full object-cover"
+												onError={(e) => {
+													(e.target as HTMLImageElement).style.display =
+														'none';
+												}}
+											/>
+										) : null}
 									</div>
 									<div className="flex flex-col gap-2">
 										<span className="text-blue-700 font-bold text-xl leading-tight">
-											{rector.name}
+											{person.displayName}
 										</span>
 										<span className="text-blue-400 text-base font-semibold">
-											{rector.years}
+											{person.yearsLabel}
 										</span>
 										<span className="text-gray-500 text-base leading-relaxed">
-											{rector.description}
+											{person.shortDescription}
 										</span>
 									</div>
 								</button>
@@ -87,7 +92,6 @@ export default function Rectors() {
 				</div>
 			</div>
 
-			{/* индикатор скролла*/}
 			<div
 				className="fixed bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none transition-opacity duration-500"
 				style={{ opacity: atBottom ? 0 : 1 }}

@@ -90,20 +90,20 @@ async function cleanupMediaRecordsForDeletedPath(relPath: string): Promise<void>
 	const urlPrefix = url.endsWith('/') ? url : `${url}/`;
 
 	// Точно удаляем по равенству, а для каталогов — по префиксу
-	await prisma.$transaction([
-		prisma.gallery_photos.deleteMany({
-			where: {
-				OR: [{ src: url }, { src: cleaned }, { src: `/${cleaned}` }, { src: toPosix(url) }],
-			},
-		}),
-		prisma.gallery_videos.deleteMany({
-			where: {
-				OR: [{ src: url }, { src: cleaned }, { src: `/${cleaned}` }, { src: toPosix(url) }],
-			},
-		}),
-		prisma.gallery_photos.deleteMany({ where: { src: { startsWith: urlPrefix } } }),
-		prisma.gallery_videos.deleteMany({ where: { src: { startsWith: urlPrefix } } }),
-	]);
+	const now = new Date();
+	await prisma.mediaAsset.updateMany({
+		where: {
+			deletedAt: null,
+			OR: [
+				{ src: url },
+				{ src: cleaned },
+				{ src: `/${cleaned}` },
+				{ src: toPosix(url) },
+				{ src: { startsWith: urlPrefix } },
+			],
+		},
+		data: { deletedAt: now },
+	});
 }
 
 async function uniqueTargetPath(absDir: string, fileName: string): Promise<string> {
