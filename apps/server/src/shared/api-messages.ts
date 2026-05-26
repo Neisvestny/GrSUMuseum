@@ -1,0 +1,46 @@
+/** User-facing API error messages (Russian — admin UI language). */
+export const ApiMessage = {
+	INVALID_PATH: 'Недопустимый путь',
+	INVALID_NAME: 'Некорректное имя',
+	INVALID_BODY: 'Некорректное тело запроса',
+	NOT_FOUND: 'Не найдено',
+	INTERNAL_ERROR: 'Внутренняя ошибка сервера',
+
+	NAME_REQUIRED: 'name обязателен',
+	PATH_REQUIRED: 'path обязателен',
+	NEW_NAME_REQUIRED: 'newName обязателен',
+	FILES_REQUIRED: 'files обязателен',
+	URL_REQUIRED: 'url обязателен',
+	SRC_REQUIRED: 'src обязателен',
+	ID_MUST_BE_NUMBER: 'id должен быть числом',
+	VERSION_ID_MUST_BE_NUMBER: 'versionId должен быть числом',
+	DOCUMENT_VERSION_REQUIRED: 'documentVersion обязателен',
+	FILE_NOT_FOUND: 'Файл не найден',
+	YEAR_AND_ORDERED_IDS_REQUIRED: 'year и orderedIds обязательны',
+	ORDERED_IDS_REQUIRED: 'orderedIds обязателен',
+
+	SECTION_REQUIRED: 'section обязателен',
+	LABEL_REQUIRED: 'label обязателен',
+	PATH_FIELD_REQUIRED: 'path обязателен',
+	MENU_SECTION_MOVE_UNSUPPORTED: 'Перенос пункта меню между секциями не поддерживается',
+	MENU_ITEM_NOT_FOUND: 'Пункт меню не найден',
+
+	SLUG_REQUIRED: 'slug обязателен',
+	TITLE_REQUIRED: 'title обязателен',
+	PAGE_SLUG_EXISTS: (slug: string) => `Страница со slug "${slug}" уже существует`,
+	PAGE_SLUG_CONFLICT: 'Страница с таким slug уже существует',
+	DOCUMENT_BLOCKS_REQUIRED: 'document должен содержать blocks[]',
+	PAGE_NOT_FOUND: 'Страница не найдена',
+	DOCUMENT_VERSION_STALE: 'Версия документа устарела',
+	VERSION_NOT_FOUND: 'Версия не найдена',
+
+	PERSON_NOT_FOUND: 'Человек не найден',
+	ROLE_NOT_FOUND: 'Роль не найдена',
+	ROLE_DELETE_FAILED: 'Не удалось удалить роль',
+	TAG_NOT_FOUND: 'Тег не найден',
+	TAG_DELETE_FAILED: 'Не удалось удалить тег',
+	CATEGORY_NOT_FOUND: 'Категория не найдена',
+	CATEGORY_DELETE_FAILED: 'Не удалось удалить категорию',
+
+	downloadFailed: (status: number) => `Не удалось скачать (${status})`,
+} as const;
