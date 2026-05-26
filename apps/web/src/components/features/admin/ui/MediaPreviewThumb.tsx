@@ -7,6 +7,7 @@ import {
 	getVideoThumbnail,
 	type PreviewKind,
 } from '../../../../lib/media-preview';
+import { resolvePublicAssetUrl } from '../../../../lib/public-asset-url';
 
 type MediaPreviewThumbProps = {
 	url: string;
@@ -174,7 +175,7 @@ export default function MediaPreviewThumb({
 	if (kind === 'image') {
 		return (
 			<div className={frameClass}>
-				<ImagePreview src={url} onFallback={() => setImageFailed(true)} />
+				<ImagePreview src={resolvePublicAssetUrl(url)} onFallback={() => setImageFailed(true)} />
 			</div>
 		);
 	}
@@ -185,7 +186,7 @@ export default function MediaPreviewThumb({
 			{remoteThumb ? (
 				<RemoteVideoPreview thumbnail={remoteThumb} large={large} />
 			) : (
-				<LocalVideoPreview src={url} large={large} />
+				<LocalVideoPreview src={resolvePublicAssetUrl(url)} large={large} />
 			)}
 		</div>
 	);

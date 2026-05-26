@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Person, PersonMutation, TaxonomyBundle } from '../../../../api/people';
+import { resolvePublicAssetUrl } from '../../../../lib/public-asset-url';
 import { ConfirmDelete } from '../ui/ConfirmDelete';
 import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
@@ -87,7 +88,7 @@ export default function PersonCard({
 				<div className="w-14 h-14 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
 					{person.img ? (
 						<img
-							src={person.img}
+							src={resolvePublicAssetUrl(person.img)}
 							alt={person.displayName}
 							className="w-full h-full object-cover"
 							onError={(e) => {

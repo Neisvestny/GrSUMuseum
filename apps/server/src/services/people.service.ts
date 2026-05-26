@@ -132,6 +132,14 @@ function resolveYearsFields(data: PersonMutationInput): {
 	};
 }
 
+function normalizeAssetPath(value: string | null | undefined): string | null {
+	if (value === undefined || value === null) return null;
+	const trimmed = value.trim();
+	if (!trimmed) return null;
+	if (/^https?:\/\//i.test(trimmed)) return trimmed;
+	return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+}
+
 export class PeopleService {
 	constructor(private prisma: PrismaClient) {}
 
@@ -196,7 +204,7 @@ export class PeopleService {
 					yearTo,
 					shortDescription: data.shortDescription ?? null,
 					fullDescription: data.fullDescription ?? null,
-					img: data.img ?? null,
+					img: normalizeAssetPath(data.img),
 					sortOrder,
 				},
 			});
@@ -250,7 +258,7 @@ export class PeopleService {
 			if (data.shortDescription !== undefined)
 				updateData.shortDescription = data.shortDescription;
 			if (data.fullDescription !== undefined) updateData.fullDescription = data.fullDescription;
-			if (data.img !== undefined) updateData.img = data.img;
+			if (data.img !== undefined) updateData.img = normalizeAssetPath(data.img);
 			if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
 
 			if (Object.keys(updateData).length > 0) {

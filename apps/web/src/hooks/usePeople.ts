@@ -16,17 +16,22 @@ export function usePeople(filters: PeopleListFilters = {}) {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
+	const q = filters.q;
+	const role = filters.role;
+	const tag = filters.tag;
+	const category = filters.category;
+
 	const load = useCallback(async () => {
 		try {
 			setLoading(true);
 			setError(null);
-			setPeople(await fetchPeople(filters));
+			setPeople(await fetchPeople({ q, role, tag, category }));
 		} catch (err) {
 			setError(err instanceof ApiError ? err.message : 'Не удалось загрузить данные');
 		} finally {
 			setLoading(false);
 		}
-	}, [filters]);
+	}, [q, role, tag, category]);
 
 	useEffect(() => {
 		void load();

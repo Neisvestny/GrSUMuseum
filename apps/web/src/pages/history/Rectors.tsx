@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PEOPLE_ROLES } from '../../lib/people-roles';
+import { resolvePublicAssetUrl } from '../../lib/public-asset-url';
 import { usePeopleByRole } from '../../hooks/usePeople';
 import MainLayout from '../../layouts/MainLayout';
 
@@ -57,7 +58,7 @@ export default function Rectors() {
 									<div className="w-32 h-32 shrink-0 rounded-xl overflow-hidden border-2 border-blue-100 bg-blue-50">
 										{person.img ? (
 											<img
-												src={person.img}
+												src={resolvePublicAssetUrl(person.img)}
 												alt={person.displayName}
 												className="w-full h-full object-cover"
 												onError={(e) => {

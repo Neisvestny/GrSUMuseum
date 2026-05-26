@@ -1,5 +1,6 @@
 import type { Person } from '../api/people';
 import type { EntityItem } from '../components/patterns/EntityListDetail';
+import { resolvePublicAssetUrl } from './public-asset-url';
 
 export function personToEntityItem(person: Person): EntityItem {
 	return {
@@ -7,6 +8,6 @@ export function personToEntityItem(person: Person): EntityItem {
 		name: person.displayName,
 		role: person.subtitle ?? '',
 		desc: person.shortDescription ?? '',
-		img: person.img ?? '',
+		img: person.img ? resolvePublicAssetUrl(person.img) : '',
 	};
 }

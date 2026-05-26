@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchImagesIndex } from '../../../../api/images';
+import { resolvePublicAssetUrl } from '../../../../lib/public-asset-url';
 import FileManagerModal from '../files/FileManagerModal';
 import { adminInputClass, adminLabelClass } from './adminFormStyles';
 
@@ -55,7 +56,7 @@ export default function ImagePathInput({
 				if (cancelled) return;
 				const list = data.files.slice(0, 12).map((name) => ({
 					name,
-					url: `${data.baseUrl}${name}`,
+					url: resolvePublicAssetUrl(`${data.baseUrl}${name}`),
 				}));
 				setSuggestions(list);
 			})
@@ -118,6 +119,20 @@ export default function ImagePathInput({
 				</div>
 			</label>
 
+			{normalized.stored && (
+				<div className="mt-3 flex items-center gap-3">
+					<img
+						src={resolvePublicAssetUrl(normalized.stored)}
+						alt=""
+						className="w-16 h-16 rounded-xl object-cover border-2 border-blue-100 bg-blue-50"
+						onError={(e) => {
+							(e.target as HTMLImageElement).style.display = 'none';
+						}}
+					/>
+					<span className="text-xs text-gray-400 truncate">{normalized.stored}</span>
+				</div>
+			)}
+
 			{showSuggestions && (
 				<div className="absolute z-30 mt-2 w-full rounded-2xl border-2 border-blue-100 bg-white shadow-lg overflow-hidden">
 					<div className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-blue-50">
@@ -132,7 +147,7 @@ export default function ImagePathInput({
 									key={s.name}
 									type="button"
 									onClick={() => {
-										onChange(s.url);
+										onChange(`${normalized.prefix}${s.name}`);
 										setOpen(false);
 									}}
 									className="w-full flex items-center gap-3 px-4 py-2 hover:bg-blue-50 text-left"

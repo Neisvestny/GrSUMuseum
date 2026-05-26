@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePerson } from '../hooks/usePeople';
+import { resolvePublicAssetUrl } from '../lib/public-asset-url';
 import MainLayout from '../layouts/MainLayout';
 
 export default function RectorDetails() {
@@ -35,7 +36,7 @@ export default function RectorDetails() {
 					<div className="w-48 h-60 shrink-0 rounded-2xl overflow-hidden border-2 border-blue-100 bg-blue-50">
 						{person.img ? (
 							<img
-								src={person.img}
+								src={resolvePublicAssetUrl(person.img)}
 								alt={person.displayName}
 								className="w-full h-full object-cover"
 								onError={(e) => {
@@ -82,7 +83,7 @@ export default function RectorDetails() {
 									className="rounded-xl overflow-hidden border-2 border-blue-100 aspect-video bg-blue-50"
 								>
 									<img
-										src={url}
+										src={resolvePublicAssetUrl(url)}
 										alt={`Фото ${i + 1}`}
 										className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
 										onError={(e) => {
