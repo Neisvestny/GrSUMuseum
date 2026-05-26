@@ -23,7 +23,8 @@
     "db:migrate": "npm run db:migrate -w @museum/server",
     "db:deploy": "npm run db:deploy -w @museum/server",
     "db:migrate-legacy": "npm run db:migrate-legacy -w @museum/server",
-    "verify-paths": "npm run verify-paths -w @museum/server"
+    "verify-paths": "npm run verify-paths -w @museum/server",
+    "db:seed-admin": "npm run db:seed-admin -w @museum/server"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

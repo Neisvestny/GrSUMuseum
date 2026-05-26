@@ -121,6 +121,7 @@ export async function uploadMediaFiles(
 
 	const response = await fetch(`${API_BASE}/media/upload?${params}`, {
 		method: 'POST',
+		credentials: 'include',
 		body: form,
 	});
 

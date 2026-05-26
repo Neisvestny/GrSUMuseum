@@ -5,6 +5,7 @@ export const ApiMessage = {
 	INVALID_BODY: 'Некорректное тело запроса',
 	NOT_FOUND: 'Не найдено',
 	INTERNAL_ERROR: 'Внутренняя ошибка сервера',
+	UNAUTHORIZED: 'Требуется авторизация',
 
 	NAME_REQUIRED: 'name обязателен',
 	PATH_REQUIRED: 'path обязателен',

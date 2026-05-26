@@ -1,14 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
-import { Route, Routes, useNavigate } from 'react-router-dom';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import ScreenSaver from './components/ScreenSaver';
 import { appRoutes } from './app/routes';
 import './index.css';
 
 const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 минут
 
+function isAdminPath(pathname: string): boolean {
+	return pathname === '/admin' || pathname.startsWith('/admin/');
+}
+
 export default function App() {
-	const [, setIsIdle] = useState(false);
+	const [isIdle, setIsIdle] = useState(false);
+	const location = useLocation();
+	const navigate = useNavigate();
+	const isAdminRoute = isAdminPath(location.pathname);
 
 	useEffect(() => {
+		if (isAdminRoute) {
+			setIsIdle(false);
+			return;
+		}
+
 		let timer: ReturnType<typeof setTimeout>;
 
 		const startTimer = () => {
@@ -17,6 +30,7 @@ export default function App() {
 		};
 
 		const handleActivity = () => {
+			setIsIdle(false);
 			startTimer();
 		};
 
@@ -29,14 +43,12 @@ export default function App() {
 			clearTimeout(timer);
 			events.forEach((e) => window.removeEventListener(e, handleActivity));
 		};
-	}, []);
-
-	const navigate = useNavigate();
+	}, [isAdminRoute]);
 
 	const touchStartX = useRef(0);
 	const touchEndX = useRef(0);
 
-	const MIN_SWIPE_DISTANCE = 80; // минимальная дистанция свайпа
+	const MIN_SWIPE_DISTANCE = 80;
 
 	useEffect(() => {
 		const handleTouchStart = (e: TouchEvent) => {
@@ -48,7 +60,6 @@ export default function App() {
 
 			const distance = touchEndX.current - touchStartX.current;
 
-			// свайп слева направо
 			if (distance > MIN_SWIPE_DISTANCE) {
 				navigate(-1);
 			}
@@ -65,6 +76,13 @@ export default function App() {
 
 	return (
 		<>
+			{isIdle && !isAdminRoute && (
+				<ScreenSaver
+					onDismiss={() => {
+						setIsIdle(false);
+					}}
+				/>
+			)}
 			<Routes>
 				{appRoutes.map((route) => (
 					<Route key={route.path} path={route.path} element={route.element} />

@@ -7,6 +7,7 @@ import PagesPanel from '../components/features/admin/pages/PagesPanel';
 import PeoplePanel from '../components/features/admin/people/PeoplePanel';
 import TaxonomyPanel from '../components/features/admin/taxonomy/TaxonomyPanel';
 import { AdminToastProvider } from '../components/features/admin/ui/AdminToastContext';
+import { signOut } from '../lib/auth-client';
 
 const SECTIONS = [
 	{ id: 'menu-cms', label: 'Меню разделов', sub: 'Навигация', icon: '🧭' },
@@ -43,7 +44,17 @@ export default function AdminPanel() {
 		<AdminToastProvider>
 			<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex overflow-hidden">
 				<aside className="w-64 shrink-0 h-full flex flex-col bg-white/80 backdrop-blur-md border-r border-blue-100 z-10">
-					<div className="px-6 py-5 border-b border-blue-100">
+					<div className="px-6 py-5 border-b border-blue-100 space-y-3">
+						<button
+							type="button"
+							onClick={async () => {
+								await signOut();
+								navigate('/admin/login', { replace: true });
+							}}
+							className="w-full text-left text-sm text-red-600 hover:text-red-800 font-medium transition-colors"
+						>
+							Выйти
+						</button>
 						<button
 							onClick={() => navigate(-1)}
 							className="flex items-center gap-2 text-blue-700 font-semibold text-sm hover:text-blue-900 transition-colors"

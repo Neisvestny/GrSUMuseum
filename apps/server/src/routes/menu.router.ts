@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { MenuController } from '../controllers/menu.controller';
 import { prisma } from '../db/prisma';
+import { requireAuth } from '../app/middleware/require-auth.js';
 import { MenuService } from '../services/menu.service';
 
 const service = new MenuService(prisma);
@@ -8,11 +9,14 @@ const controller = new MenuController(service);
 
 export const menuRouter = Router();
 
-// TODO: добавить middleware авторизации перед деструктивными операциями
-// menuRouter.use(authMiddleware);
-
-menuRouter.get('/', controller.listAll);
 menuRouter.get('/:section', controller.listBySection);
-menuRouter.post('/', controller.create);
-menuRouter.put('/:id', controller.update);
-menuRouter.delete('/:id', controller.delete);
+
+const adminMenuRouter = Router();
+adminMenuRouter.use(requireAuth);
+
+adminMenuRouter.get('/', controller.listAll);
+adminMenuRouter.post('/', controller.create);
+adminMenuRouter.put('/:id', controller.update);
+adminMenuRouter.delete('/:id', controller.delete);
+
+menuRouter.use(adminMenuRouter);

@@ -13,8 +13,17 @@ export class ApiError extends Error {
 	}
 }
 
+function redirectToAdminLoginIfNeeded(status: number): void {
+	if (status !== 401 || typeof window === 'undefined') return;
+	const path = window.location.pathname;
+	if (path.startsWith('/admin') && path !== '/admin/login') {
+		window.location.replace('/admin/login');
+	}
+}
+
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 	const response = await fetch(`${API_BASE_URL}${path}`, {
+		credentials: 'include',
 		headers: {
 			'Content-Type': 'application/json',
 			...(init?.headers ?? {}),
@@ -36,6 +45,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 			typeof (payload as { error?: unknown }).error === 'string'
 				? (payload as { error: string }).error
 				: `Request failed with status ${response.status}`;
+		redirectToAdminLoginIfNeeded(response.status);
 		throw new ApiError(message, response.status, payload);
 	}
 

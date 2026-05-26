@@ -1,4 +1,6 @@
 import type { ReactElement } from 'react';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
+import AdminLogin from '../pages/AdminLogin';
 import AdminPanel from '../pages/AdminPanel';
 import MemoryAfgan from '../pages/history/MemoryAfgan';
 import MemoryVov from '../pages/history/MemoryVov';
@@ -15,7 +17,15 @@ export type AppRoute = {
 };
 
 export const appRoutes: AppRoute[] = [
-	{ path: '/admin', element: <AdminPanel /> },
+	{ path: '/admin/login', element: <AdminLogin /> },
+	{
+		path: '/admin',
+		element: (
+			<ProtectedRoute>
+				<AdminPanel />
+			</ProtectedRoute>
+		),
+	},
 	{ path: '/', element: <Home /> },
 	// { path: '/history', element: <History /> },
 	// { path: '/history/development', element: <TeachersInstitute /> },

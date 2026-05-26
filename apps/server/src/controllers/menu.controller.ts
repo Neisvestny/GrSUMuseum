@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import { getSessionFromRequest } from '../app/middleware/require-auth.js';
 import type { MenuService } from '../services/menu.service';
 import { ApiMessage } from '../shared/api-messages';
 import { HttpError } from '../shared/errors';
@@ -15,6 +16,13 @@ export class MenuController {
 			return;
 		}
 		const includeInactive = req.query.includeInactive === 'true';
+		if (includeInactive) {
+			const session = await getSessionFromRequest(req);
+			if (!session?.user) {
+				next(new HttpError(StatusCodes.UNAUTHORIZED, ApiMessage.UNAUTHORIZED));
+				return;
+			}
+		}
 		try {
 			res.json(await this.service.listBySection(section, includeInactive));
 		} catch (err) {

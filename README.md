@@ -18,6 +18,9 @@ Create `.env` in the **repository root** (copy from `.env.example`):
 - `PORT` (default `3000`)
 - `CORS_ORIGIN` (default `http://localhost:5173`, comma-separated)
 - `DATABASE_URL` or `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- `BETTER_AUTH_SECRET` (min. 32 chars; e.g. `openssl rand -base64 32`)
+- `BETTER_AUTH_URL` (default `http://localhost:3000`)
+- `ADMIN_EMAIL`, `ADMIN_PASSWORD` (for one-time admin seed only)
 
 Optional for the frontend (`apps/web/.env`):
 
@@ -60,4 +63,10 @@ Builds the web app first, then compiles the server. Static SPA is served from `a
 npm run db:migrate
 npm run db:generate
 npm run db:deploy
+npm run db:seed-admin
 ```
+
+## Admin access
+
+- Admin UI: http://localhost:5173/admin (redirects to login without a session)
+- Public sign-up is disabled; create the first user with `npm run db:seed-admin` using `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`
