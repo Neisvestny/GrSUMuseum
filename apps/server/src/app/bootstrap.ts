@@ -16,6 +16,13 @@ export async function bootstrap(): Promise<void> {
 	app.get('/', (_req: Request, res: Response) => {
 		res.sendFile(path.join(staticRoot, 'index.html'));
 	});
+	app.get('/{*splat}', (req: Request, res: Response, next) => {
+		if (req.path.startsWith('/api')) {
+			next();
+			return;
+		}
+		res.sendFile(path.join(staticRoot, 'index.html'));
+	});
 
 	app.listen(env.PORT, () => {
 		console.log(`Server running on http://localhost:${env.PORT}`);

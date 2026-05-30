@@ -8,6 +8,7 @@ export default function MemoryAfgan() {
 			bookTabLabel="Афганистан"
 			peopleRole={PEOPLE_ROLES.teacherAfgan}
 			coverTitle="Афганистан"
+			pdfPath="/book_afgan.pdf"
 		/>
 	);
 }

@@ -26,7 +26,10 @@ export default function App() {
 
 		const startTimer = () => {
 			clearTimeout(timer);
-			timer = setTimeout(() => setIsIdle(true), IDLE_TIMEOUT);
+			timer = setTimeout(() => {
+				navigate('/', { replace: true });
+				setIsIdle(true);
+			}, IDLE_TIMEOUT);
 		};
 
 		const handleActivity = () => {
@@ -43,7 +46,7 @@ export default function App() {
 			clearTimeout(timer);
 			events.forEach((e) => window.removeEventListener(e, handleActivity));
 		};
-	}, [isAdminRoute]);
+	}, [isAdminRoute, navigate]);
 
 	const touchStartX = useRef(0);
 	const touchEndX = useRef(0);

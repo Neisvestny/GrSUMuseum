@@ -198,7 +198,7 @@ export default function PageVersionsPanel({
 							</AdminButton>
 						</div>
 						<div className="overflow-y-auto p-5">
-							<BlockRenderer document={previewDocument} pageTitle={draft.title} />
+							<BlockRenderer document={previewDocument} pageTitle={draft.title} preview />
 						</div>
 					</BaseModal>
 				)}

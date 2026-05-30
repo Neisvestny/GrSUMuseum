@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { SurfaceCard } from '../../design-system/Card';
 import { blockPayload, bool, num, recordArray, str, stringArray } from './payload';
 import type { BlockNode } from '@museum/document';
+import { PeopleCatalogView } from './PeopleCatalogView';
 
 const card = 'bg-white/70 backdrop-blur-md rounded-2xl border-2 border-blue-100 shadow-sm';
 
@@ -397,6 +398,8 @@ export function renderCmsBlockType(
 			return <VideoBlockView block={block} />;
 		case 'list':
 			return <ListView block={block} />;
+		case 'peopleCatalog':
+			return <PeopleCatalogView block={block} />;
 		default:
 			return renderChild(block);
 	}

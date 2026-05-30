@@ -9,7 +9,7 @@ import MainLayout from '../../../layouts/MainLayout';
 import { SurfaceCard } from '../../design-system/Card';
 import TabsBar from '../../design-system/TabsBar';
 import EntityListDetail from '../../patterns/EntityListDetail';
-import { getCachedPages, PDF_PATH, PDF_SCALE, saveCachedPages } from './lib/pdf-cache';
+import { getCachedPages, PDF_SCALE, saveCachedPages } from './lib/pdf-cache';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 	'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -21,6 +21,7 @@ type Props = {
 	bookTabLabel: string;
 	peopleRole: PeopleRoleSlug;
 	coverTitle: string;
+	pdfPath: string;
 };
 
 function TeachersTab({ role }: { role: PeopleRoleSlug }) {
@@ -58,7 +59,7 @@ const CoverPage = React.forwardRef<HTMLDivElement, { title: string }>(({ title }
 ));
 CoverPage.displayName = 'CoverPage';
 
-function BookReader({ coverTitle }: { coverTitle: string }) {
+function BookReader({ coverTitle, pdfPath }: { coverTitle: string; pdfPath: string }) {
 	const [pages, setPages] = useState<string[]>([]);
 	const [status, setStatus] = useState<'loading' | 'error' | 'ready'>('loading');
 	const [progress, setProgress] = useState({ loaded: 0, total: 0 });
@@ -68,7 +69,7 @@ function BookReader({ coverTitle }: { coverTitle: string }) {
 	useEffect(() => {
 		(async () => {
 			try {
-				const cached = await getCachedPages();
+				const cached = await getCachedPages(pdfPath);
 				if (cached) {
 					setPages(cached);
 					setProgress({ loaded: cached.length, total: cached.length });
@@ -76,7 +77,7 @@ function BookReader({ coverTitle }: { coverTitle: string }) {
 					return;
 				}
 
-				const doc = await pdfjsLib.getDocument(PDF_PATH).promise;
+				const doc = await pdfjsLib.getDocument(pdfPath).promise;
 				const total = doc.numPages;
 				const dataUrls: string[] = [];
 
@@ -92,14 +93,14 @@ function BookReader({ coverTitle }: { coverTitle: string }) {
 					setProgress({ loaded: i, total });
 				}
 
-				await saveCachedPages(dataUrls);
+				await saveCachedPages(pdfPath, dataUrls);
 				setPages(dataUrls);
 				setStatus('ready');
 			} catch {
 				setStatus('error');
 			}
 		})();
-	}, []);
+	}, [pdfPath]);
 
 	if (status === 'loading') {
 		const pct = progress.total > 0 ? Math.round((progress.loaded / progress.total) * 100) : 0;
@@ -129,7 +130,7 @@ function BookReader({ coverTitle }: { coverTitle: string }) {
 				<div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-red-700 text-center max-w-md">
 					<div className="text-4xl mb-3">⚠️</div>
 					<p className="font-semibold">
-						Не удалось загрузить PDF. Убедитесь что файл лежит в public/book.pdf
+						Не удалось загрузить PDF. Убедитесь, что файл лежит в public{pdfPath}
 					</p>
 				</div>
 			</div>
@@ -221,6 +222,7 @@ export default function MemoryWarPage({
 	bookTabLabel,
 	peopleRole,
 	coverTitle,
+	pdfPath,
 }: Props) {
 	const tabs = [
 		{ id: 'teachers', label: 'Преподаватели войны' },
@@ -244,7 +246,7 @@ export default function MemoryWarPage({
 						<TeachersTab role={peopleRole} />
 					) : (
 						<SurfaceCard className="h-full p-8">
-							<BookReader coverTitle={coverTitle} />
+							<BookReader coverTitle={coverTitle} pdfPath={pdfPath} />
 						</SurfaceCard>
 					)}
 				</motion.div>

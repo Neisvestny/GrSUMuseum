@@ -5,6 +5,7 @@ import MediaStripBlockEditor from './MediaStripBlockEditor';
 import SortableBlockShell from './SortableBlockShell';
 import TabsBlockEditor from './TabsBlockEditor';
 import GenericBlockEditor from './GenericBlockEditor';
+import PeopleCatalogBlockEditor from './PeopleCatalogBlockEditor';
 import TextImageBlockEditor from './TextImageBlockEditor';
 
 export default function BlockEditor({
@@ -42,6 +43,8 @@ export default function BlockEditor({
 				return <AlternatingBlockEditor block={block} onChange={patchPayload} />;
 			case 'mediaStrip':
 				return <MediaStripBlockEditor block={block} onChange={patchPayload} />;
+			case 'peopleCatalog':
+				return <PeopleCatalogBlockEditor block={block} onChange={patchPayload} />;
 			default: {
 				const generic = (
 					<GenericBlockEditor block={block} onChange={patchPayload} />

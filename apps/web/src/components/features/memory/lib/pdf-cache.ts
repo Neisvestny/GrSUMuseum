@@ -1,9 +1,11 @@
-export const PDF_PATH = '/book_vov.pdf';
 export const PDF_SCALE = 1.4;
 
 const DB_NAME = 'book-cache';
 const DB_STORE = 'pages';
-const DB_KEY = 'book.pdf';
+
+function cacheKey(pdfPath: string): string {
+	return pdfPath.replace(/^\//, '');
+}
 
 async function openDb(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
@@ -14,19 +16,21 @@ async function openDb(): Promise<IDBDatabase> {
 	});
 }
 
-export async function getCachedPages(): Promise<string[] | null> {
+export async function getCachedPages(pdfPath: string): Promise<string[] | null> {
 	const db = await openDb();
+	const key = cacheKey(pdfPath);
 	return new Promise((resolve) => {
-		const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(DB_KEY);
+		const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(key);
 		req.onsuccess = () => resolve(req.result ?? null);
 		req.onerror = () => resolve(null);
 	});
 }
 
-export async function saveCachedPages(pages: string[]): Promise<void> {
+export async function saveCachedPages(pdfPath: string, pages: string[]): Promise<void> {
 	const db = await openDb();
+	const key = cacheKey(pdfPath);
 	return new Promise((resolve) => {
-		const req = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(pages, DB_KEY);
+		const req = db.transaction(DB_STORE, 'readwrite').objectStore(DB_STORE).put(pages, key);
 		req.onsuccess = () => resolve();
 		req.onerror = () => resolve();
 	});

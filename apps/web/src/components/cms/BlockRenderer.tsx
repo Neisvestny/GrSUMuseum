@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { BlockNode, PageDocument } from '@museum/document';
 import type { MediaItem } from '../../types/media';
 import { renderCmsBlockType } from './blocks/CmsBlockViews';
+import { CmsPreviewProvider } from './CmsPreviewContext';
 import TabsBar from '../design-system/TabsBar';
 import { EmptyState } from '../design-system/States';
 import AlternatingBlocks from '../patterns/AlternatingBlocks';
@@ -178,16 +179,19 @@ export default function BlockRenderer({
 	document,
 	pageTitle,
 	emptyText = 'Контент страницы пока не заполнен',
-}: Props) {
+	preview = false,
+}: Props & { preview?: boolean }) {
 	if (!document.blocks.length) {
 		return <EmptyState text={emptyText} />;
 	}
 
 	return (
-		<div className="flex flex-col gap-8">
-			{document.blocks.map((block) => (
-				<Fragment key={block.id}>{renderBlock(block, pageTitle)}</Fragment>
-			))}
-		</div>
+		<CmsPreviewProvider preview={preview}>
+			<div className={`flex flex-col ${preview ? 'gap-4' : 'gap-8'}`}>
+				{document.blocks.map((block) => (
+					<Fragment key={block.id}>{renderBlock(block, pageTitle)}</Fragment>
+				))}
+			</div>
+		</CmsPreviewProvider>
 	);
 }

@@ -47,8 +47,7 @@ export type AssetMetadataPatch = {
 };
 
 const API_BASE =
-	(import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ||
-	'http://localhost:3001/api';
+	(import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || '/api';
 
 export async function fetchMediaRoots(): Promise<
 	Array<{ id: MediaRoot; baseUrl: string }>

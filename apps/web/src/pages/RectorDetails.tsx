@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
+import { EmptyState, ErrorState, LoadingState } from '../components/design-system/States';
 import { usePerson } from '../hooks/usePeople';
 import { resolvePublicAssetUrl } from '../lib/public-asset-url';
 import MainLayout from '../layouts/MainLayout';
@@ -12,19 +13,23 @@ export default function RectorDetails() {
 	if (loading) {
 		return (
 			<MainLayout title="Ректор">
-				<div className="flex items-center justify-center h-64 text-blue-600 text-lg">
-					Загрузка...
-				</div>
+				<LoadingState />
 			</MainLayout>
 		);
 	}
 
-	if (error || !person) {
+	if (error) {
 		return (
 			<MainLayout title="Ректор">
-				<div className="flex items-center justify-center h-64 text-red-500 text-lg">
-					{error ?? 'Ректор не найден'}
-				</div>
+				<ErrorState text={error} />
+			</MainLayout>
+		);
+	}
+
+	if (!person) {
+		return (
+			<MainLayout title="Ректор">
+				<EmptyState text="Ректор не найден" />
 			</MainLayout>
 		);
 	}

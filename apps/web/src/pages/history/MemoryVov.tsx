@@ -8,6 +8,7 @@ export default function MemoryVov() {
 			bookTabLabel="Великая Отечественная Война"
 			peopleRole={PEOPLE_ROLES.teacherVov}
 			coverTitle="Великая Отечественная Война"
+			pdfPath="/book_vov.pdf"
 		/>
 	);
 }

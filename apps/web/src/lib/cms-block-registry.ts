@@ -22,7 +22,8 @@ export type BlockType =
 	| 'imageGallery'
 	| 'twoColumns'
 	| 'video'
-	| 'list';
+	| 'list'
+	| 'peopleCatalog';
 
 export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
 	tabs: 'Вкладки',
@@ -46,6 +47,7 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
 	twoColumns: 'Две колонки текста',
 	video: 'Видео',
 	list: 'Список',
+	peopleCatalog: 'Картотека людей',
 };
 
 export const BLOCK_TYPE_GROUPS: Array<{ label: string; types: BlockType[] }> = [
@@ -74,6 +76,10 @@ export const BLOCK_TYPE_GROUPS: Array<{ label: string; types: BlockType[] }> = [
 	{
 		label: 'Секции и сетки',
 		types: ['stats', 'features', 'accordion', 'timeline', 'buttonRow'],
+	},
+	{
+		label: 'Персоналии',
+		types: ['peopleCatalog'],
 	},
 	{
 		label: 'Прочее',
@@ -161,6 +167,12 @@ export function defaultPayload(type: BlockType): Record<string, unknown> {
 			return { src: '', title: '', poster: '', is_external: false };
 		case 'list':
 			return { style: 'bullet', items: ['Пункт списка'] };
+		case 'peopleCatalog':
+			return {
+				role: 'rector',
+				searchPlaceholder: 'Поиск по ФИО…',
+				emptyText: 'Ректоры не добавлены',
+			};
 		default:
 			return {};
 	}

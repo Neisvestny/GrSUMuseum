@@ -100,7 +100,7 @@ export default function DocumentEditor({
 			{showPreview && (
 				<div className="rounded-xl border-2 border-dashed border-stone-300 p-4 bg-stone-50">
 					<h3 className="text-sm font-medium text-stone-700 mb-3">Превью (как на киоске)</h3>
-					<BlockRenderer document={document} pageTitle={pageTitle} />
+					<BlockRenderer document={document} pageTitle={pageTitle} preview />
 				</div>
 			)}
 

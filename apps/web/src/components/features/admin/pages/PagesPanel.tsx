@@ -216,6 +216,32 @@ export default function PagesPanel() {
 		}
 	};
 
+	const handleDeletePage = async () => {
+		if (!draft) return;
+
+		const message = [
+			`Удалить страницу «${draft.title}»?`,
+			`Путь: /${draft.slug}`,
+			'',
+			'Страница будет скрыта (soft delete). Это действие нельзя отменить из интерфейса.',
+		].join('\n');
+
+		if (!window.confirm(message)) return;
+
+		setSaving(true);
+		try {
+			await deletePage(draft.id);
+			setDraft(null);
+			setSelectedPageId(null);
+			await loadPages();
+			toast.success('Страница удалена');
+		} catch (err) {
+			toast.error(errorMessage(err, 'Не удалось удалить страницу'));
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	if (loading && pages.length === 0) {
 		return <p className="text-stone-500">Загрузка...</p>;
 	}
@@ -297,10 +323,8 @@ export default function PagesPanel() {
 							<AdminButton
 								type="button"
 								variant="danger"
-								onClick={() => {
-									if (!confirm('Удалить страницу?')) return;
-									void deletePage(draft.id).then(() => loadPages());
-								}}
+								onClick={() => void handleDeletePage()}
+								disabled={saving}
 							>
 								Удалить
 							</AdminButton>

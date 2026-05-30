@@ -22,9 +22,9 @@ Create `.env` in the **repository root** (copy from `.env.example`):
 - `BETTER_AUTH_URL` (default `http://localhost:3000`)
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD` (for one-time admin seed only)
 
-Optional for the frontend (`apps/web/.env`):
+Optional for the frontend (root `.env`, loaded via Vite `envDir`):
 
-- `VITE_API_BASE_URL` (default `http://localhost:3001/api`)
+- `VITE_API_BASE_URL` (default `/api` — proxied to `PORT` in dev via Vite)
 
 Uploaded media is stored under `apps/web/public/` (`images`, `videos`, `files`).
 

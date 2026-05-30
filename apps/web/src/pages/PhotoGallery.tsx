@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { fetchGalleryPhotos, type GalleryPhoto } from '../api/gallery';
 import BaseModal from '../components/design-system/BaseModal';
-import { ErrorState, LoadingState } from '../components/design-system/States';
+import { ErrorState, LoadingState, EmptyState } from '../components/design-system/States';
 import MainLayout from '../layouts/MainLayout';
 
 interface YearBlock {
@@ -273,7 +273,10 @@ export default function PhotoGallery() {
 		<MainLayout title="Фотогалерея">
 			{loading && <LoadingState />}
 			{error && <ErrorState text={error} />}
-			{!loading && !error && (
+			{!loading && !error && photos.length === 0 && (
+				<EmptyState text="Фотографии не добавлены" />
+			)}
+			{!loading && !error && photos.length > 0 && (
 				<>
 					<div className="mb-8 flex items-center gap-4">
 						<div className="h-px flex-1 bg-gradient-to-r from-transparent to-stone-700/40" />
