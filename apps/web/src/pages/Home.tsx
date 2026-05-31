@@ -15,9 +15,9 @@ export default function Home() {
 			{/* ФОН */}
 			<AnimatedBlobsBackground blobs={BLOBS} className="absolute inset-0 z-1" />
 
-			<main className="flex-1 flex flex-col items-center justify-center gap-8">
+			<main className="flex-1 flex flex-col items-center justify-center gap-8 px-4">
 				<header className="text-center">
-					<p className="text-gray-500 text-2xl font-bold">
+					<p className="text-gray-500 text-xl md:text-2xl font-bold">
 						Выберите раздел для ознакомления
 					</p>
 				</header>
@@ -46,7 +46,7 @@ function NavButton({
 				navigate(target);
 			}}
 			className="
-				w-80 h-36
+				w-full max-w-sm sm:w-80 h-28 sm:h-36
 				rounded-2xl border-2 border-blue-200
 				bg-white/80 backdrop-blur-sm hover:bg-blue-700 active:scale-95
 				transition-all duration-200

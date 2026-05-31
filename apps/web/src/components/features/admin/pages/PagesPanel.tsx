@@ -17,6 +17,7 @@ import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
 import AdminCreateForm from '../ui/AdminCreateForm';
 import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import { useAdminConfirm } from '../ui/AdminConfirmContext';
 import { useAdminToast } from '../ui/AdminToastContext';
 import { ErrorBox } from '../ui/ErrorBox';
 import DocumentEditor from './document-editor/DocumentEditor';
@@ -39,6 +40,7 @@ function serializeDocument(doc: PageDocument): string {
 
 export default function PagesPanel() {
 	const toast = useAdminToast();
+	const { confirm } = useAdminConfirm();
 	const [pages, setPages] = useState<PageSummary[]>([]);
 	const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
 	const [draft, setDraft] = useState<DraftPage | null>(null);
@@ -139,11 +141,16 @@ export default function PagesPanel() {
 		setDocument(next);
 	};
 
-	const handleDiscardChanges = () => {
+	const handleDiscardChanges = async () => {
 		if (!draft || !isDirty) return;
-		if (!confirm('Отменить все несохранённые правки и вернуть последний сохранённый черновик?')) {
-			return;
-		}
+		const ok = await confirm({
+			title: 'Отменить правки?',
+			message:
+				'Отменить все несохранённые правки и вернуть последний сохранённый черновик?',
+			confirmLabel: 'Отменить правки',
+			variant: 'warning',
+		});
+		if (!ok) return;
 		const doc = draft.draftDocument ?? EMPTY_DOCUMENT;
 		setDocument(doc);
 		markSaved(doc);
@@ -153,16 +160,24 @@ export default function PagesPanel() {
 	const handlePublish = async () => {
 		if (!draft) return;
 		if (isDirty) {
-			const saveFirst = confirm(
-				'Есть несохранённые изменения. Сохранить черновик перед публикацией?',
-			);
+			const saveFirst = await confirm({
+				title: 'Несохранённые изменения',
+				message: 'Есть несохранённые изменения. Сохранить черновик перед публикацией?',
+				confirmLabel: 'Сохранить и опубликовать',
+				variant: 'primary',
+			});
 			if (saveFirst) {
 				const ok = await persistDraft();
 				if (!ok) return;
-			} else if (
-				!confirm('Опубликовать без сохранения текущих правок в черновике? На киоск уйдёт последний сохранённый черновик.')
-			) {
-				return;
+			} else {
+				const publishAnyway = await confirm({
+					title: 'Опубликовать без сохранения?',
+					message:
+						'Опубликовать без сохранения текущих правок в черновике? На киоск уйдёт последний сохранённый черновик.',
+					confirmLabel: 'Опубликовать',
+					variant: 'danger',
+				});
+				if (!publishAnyway) return;
 			}
 		}
 		setSaving(true);
@@ -219,14 +234,18 @@ export default function PagesPanel() {
 	const handleDeletePage = async () => {
 		if (!draft) return;
 
-		const message = [
-			`Удалить страницу «${draft.title}»?`,
-			`Путь: /${draft.slug}`,
-			'',
-			'Страница будет скрыта (soft delete). Это действие нельзя отменить из интерфейса.',
-		].join('\n');
-
-		if (!window.confirm(message)) return;
+		const ok = await confirm({
+			title: 'Удалить страницу?',
+			message: [
+				`Страница «${draft.title}»`,
+				`Путь: /${draft.slug}`,
+				'',
+				'Страница будет скрыта (soft delete). Это действие нельзя отменить из интерфейса.',
+			].join('\n'),
+			confirmLabel: 'Удалить',
+			variant: 'danger',
+		});
+		if (!ok) return;
 
 		setSaving(true);
 		try {
@@ -255,7 +274,12 @@ export default function PagesPanel() {
 				disabled={creating}
 				submitLabel="Создать страницу"
 			>
-				<SlugPathSelect value={newPageSlug} onChange={setNewPageSlug} mode="create" />
+				<SlugPathSelect
+					value={newPageSlug}
+					onChange={setNewPageSlug}
+					onMenuPathSelect={({ label }) => setNewPageTitle(label)}
+					mode="create"
+				/>
 				<div>
 					<label className={adminLabelClass}>Заголовок</label>
 					<input
@@ -268,24 +292,38 @@ export default function PagesPanel() {
 			</AdminCreateForm>
 
 			<div className="flex gap-6 flex-col lg:flex-row">
-				<ul className="lg:w-56 shrink-0 space-y-1">
-					{pages.map((p) => (
-						<li key={p.id}>
-							<button
-								type="button"
-								className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
-									p.id === selectedPageId
-										? 'bg-blue-100 text-blue-900'
-										: 'hover:bg-stone-100'
-								}`}
-								onClick={() => setSelectedPageId(p.id)}
-							>
-								{p.title}
-								<span className="block text-xs text-stone-500">{p.slug}</span>
-							</button>
-						</li>
-					))}
-				</ul>
+				<div className="lg:w-56 shrink-0">
+					<label className={`${adminLabelClass} lg:hidden`}>Страница</label>
+					<select
+						className={`${adminInputClass} lg:hidden w-full`}
+						value={selectedPageId ?? ''}
+						onChange={(e) => setSelectedPageId(Number(e.target.value) || null)}
+					>
+						{pages.map((p) => (
+							<option key={p.id} value={p.id}>
+								{p.title} ({p.slug})
+							</option>
+						))}
+					</select>
+					<ul className="hidden lg:block space-y-1">
+						{pages.map((p) => (
+							<li key={p.id}>
+								<button
+									type="button"
+									className={`w-full text-left px-3 py-2 rounded-lg text-sm ${
+										p.id === selectedPageId
+											? 'bg-blue-100 text-blue-900'
+											: 'hover:bg-stone-100'
+									}`}
+									onClick={() => setSelectedPageId(p.id)}
+								>
+									{p.title}
+									<span className="block text-xs text-stone-500">{p.slug}</span>
+								</button>
+							</li>
+						))}
+					</ul>
+				</div>
 
 				{draft && (
 					<div className="flex-1 min-w-0 space-y-4">
@@ -312,7 +350,7 @@ export default function PagesPanel() {
 							<AdminButton
 								type="button"
 								variant="secondary"
-								onClick={handleDiscardChanges}
+								onClick={() => void handleDiscardChanges()}
 								disabled={saving || !isDirty}
 							>
 								Отменить правки
@@ -334,6 +372,7 @@ export default function PagesPanel() {
 							<div>
 								<label className={adminLabelClass}>Заголовок</label>
 								<input
+									key={draft.id}
 									className={adminInputClass}
 									defaultValue={draft.title}
 									onBlur={(e) => {
@@ -346,6 +385,7 @@ export default function PagesPanel() {
 							<div>
 								<label className={adminLabelClass}>Тема оформления</label>
 								<select
+									key={draft.id}
 									className={adminInputClass}
 									defaultValue={draft.themeKey}
 									onChange={(e) => {
@@ -387,6 +427,7 @@ export default function PagesPanel() {
 						/>
 
 						<DocumentEditor
+							key={draft.id}
 							document={document}
 							pageTitle={draft.title}
 							onChange={handleDocumentChange}

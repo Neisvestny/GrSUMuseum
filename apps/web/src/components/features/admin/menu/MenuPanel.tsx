@@ -109,7 +109,7 @@ export default function MenuPanel() {
 				<AdminCreateForm
 					onSubmit={add}
 					submitLabel="Создать"
-					className="grid grid-cols-[140px_1fr_1fr_auto] gap-2 items-end !flex-nowrap"
+					className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[140px_1fr_1fr_auto] gap-2 items-end"
 				>
 					<label>
 						<span className={adminLabelClass}>Секция (slug)</span>
@@ -192,7 +192,7 @@ function MenuItemRow({
 	}, [item.is_active, item.label, item.path, item.position]);
 
 	return (
-		<div className="grid grid-cols-[1fr_1fr_100px_120px_auto_auto] gap-2 items-end border border-blue-100 rounded-xl p-2">
+		<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_100px_120px_auto_auto] gap-2 items-end border border-blue-100 rounded-xl p-2">
 			<label>
 				<span className={adminLabelClass}>Название</span>
 				<input

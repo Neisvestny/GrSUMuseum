@@ -102,8 +102,9 @@ export function defaultPayload(type: BlockType): Record<string, unknown> {
 		case 'tab':
 			return { label: 'Новая вкладка', media: [] };
 		case 'textImage':
-		case 'alternating':
 			return { text: '', image: '' };
+		case 'alternating':
+			return { items: [{ text: '', image: '' }] };
 		case 'mediaStrip':
 			return { items: [] };
 		case 'hero':

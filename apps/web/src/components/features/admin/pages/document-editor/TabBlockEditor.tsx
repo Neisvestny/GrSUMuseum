@@ -11,12 +11,15 @@ import {
 	removeBlock,
 	type BlockType,
 } from '../../../../../lib/document-tree';
+import { blockSummary } from '../../../../../lib/block-summary';
 import type { BlockNode, PageDocument } from '@museum/document';
 import type { MediaItem } from '../../../../../types/media';
 import MediaBrowserModal from '../../media/MediaBrowserModal';
 import AdminButton from '../../ui/AdminButton';
 import { adminInputClass, adminLabelClass } from '../../ui/adminFormStyles';
+import { useBlockCollapse } from './BlockCollapseContext';
 import BlockEditor from './BlockEditor';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 function readTabMedia(payload: Record<string, unknown>): MediaItem[] {
 	if (!Array.isArray(payload.media)) return [];
@@ -38,6 +41,9 @@ export default function TabBlockEditor({
 	const media = readTabMedia(block.payload);
 	const [mediaOpen, setMediaOpen] = useState(false);
 	const [addType, setAddType] = useState<BlockType>('richText');
+	const { isCollapsed, toggle } = useBlockCollapse();
+	const collapsed = isCollapsed(block.id);
+	const summary = blockSummary(block);
 
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -60,6 +66,15 @@ export default function TabBlockEditor({
 	return (
 		<div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3 flex flex-col gap-3">
 			<div className="flex flex-wrap gap-2 items-end">
+				<button
+					type="button"
+					className="text-stone-500 hover:text-stone-700 p-0.5 self-end mb-2"
+					onClick={() => toggle(block.id)}
+					aria-label={collapsed ? 'Развернуть вкладку' : 'Свернуть вкладку'}
+					aria-expanded={!collapsed}
+				>
+					{collapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+				</button>
 				<div className="flex-1 min-w-[140px]">
 					<label className={adminLabelClass}>Название вкладки</label>
 					<input
@@ -67,6 +82,9 @@ export default function TabBlockEditor({
 						value={label}
 						onChange={(e) => patchTab({ label: e.target.value })}
 					/>
+					{collapsed && (
+						<p className="text-xs text-stone-500 mt-1 truncate">{summary}</p>
+					)}
 				</div>
 				<AdminButton type="button" size="sm" variant="secondary" onClick={() => setMediaOpen(true)}>
 					Медиа вкладки ({media.length})
@@ -76,6 +94,7 @@ export default function TabBlockEditor({
 				</AdminButton>
 			</div>
 
+			{!collapsed && (
 			<div className="flex flex-col gap-2 pl-2 border-l-2 border-blue-200">
 				<DndContext
 					sensors={sensors}
@@ -134,6 +153,7 @@ export default function TabBlockEditor({
 					</AdminButton>
 				</div>
 			</div>
+			)}
 
 			<MediaBrowserModal
 				open={mediaOpen}

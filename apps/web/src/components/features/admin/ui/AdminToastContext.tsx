@@ -80,7 +80,7 @@ export function AdminToastProvider({ children }: { children: ReactNode }) {
 		<AdminToastContext.Provider value={value}>
 			{children}
 			<div
-				className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 w-[min(100vw-2rem,22rem)] pointer-events-none"
+				className="fixed bottom-4 left-4 right-4 md:left-auto md:right-6 md:bottom-6 z-[200] flex flex-col gap-2 md:w-[22rem] pointer-events-none"
 				aria-live="polite"
 				aria-atomic="true"
 			>

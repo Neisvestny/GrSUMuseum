@@ -22,7 +22,7 @@ export default function MainLayout({ title, scrollRef, children }: PageTemplateP
 
 			{/* НАВБАР */}
 			{title && (
-				<nav className="relative z-10 flex items-center gap-4 px-8 py-4 bg-white/70 backdrop-blur-md border-b border-blue-100 shrink-0">
+				<nav className="relative z-10 flex items-center gap-2 md:gap-4 px-4 md:px-8 py-3 md:py-4 bg-white/70 backdrop-blur-md border-b border-blue-100 shrink-0 min-w-0">
 					<Button
 						onClick={() => {
 							if (window.history.length > 1) {
@@ -46,11 +46,11 @@ export default function MainLayout({ title, scrollRef, children }: PageTemplateP
 						Назад
 					</Button>
 					<div className="h-6 w-px bg-blue-200" />
-					<h1 className="text-blue-700 font-bold text-xl">{title}</h1>
+					<h1 className="text-blue-700 font-bold text-lg md:text-xl truncate min-w-0">{title}</h1>
 				</nav>
 			)}
 
-			<main ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-8 pt-5 pb-10">
+			<main ref={scrollRef} className="relative z-10 flex-1 overflow-y-auto px-4 md:px-8 pt-5 pb-10">
 				{children}
 			</main>
 		</div>

@@ -9,13 +9,15 @@ import {
 	removeBlock,
 	type BlockType,
 } from '../../../../../lib/document-tree';
+import { collectAllBlockIds } from '../../../../../lib/block-summary';
 import type { PageDocument } from '@museum/document';
 import BlockRenderer from '../../../../cms/BlockRenderer';
 import AdminButton from '../../ui/AdminButton';
 import { adminInputClass, adminLabelClass } from '../../ui/adminFormStyles';
+import { BlockCollapseProvider, useBlockCollapse } from './BlockCollapseContext';
 import BlockEditor from './BlockEditor';
 
-export default function DocumentEditor({
+function DocumentEditorBody({
 	document,
 	pageTitle,
 	onChange,
@@ -26,6 +28,7 @@ export default function DocumentEditor({
 }) {
 	const [addType, setAddType] = useState<BlockType>('hero');
 	const [showPreview, setShowPreview] = useState(true);
+	const { collapseAll, expandAll } = useBlockCollapse();
 
 	const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -52,6 +55,17 @@ export default function DocumentEditor({
 					Добавить
 				</AdminButton>
 				<div className="flex-1" />
+				<AdminButton
+					type="button"
+					size="sm"
+					variant="secondary"
+					onClick={() => collapseAll(collectAllBlockIds(document.blocks))}
+				>
+					Свернуть все
+				</AdminButton>
+				<AdminButton type="button" size="sm" variant="secondary" onClick={expandAll}>
+					Развернуть все
+				</AdminButton>
 				<AdminButton
 					type="button"
 					size="sm"
@@ -113,5 +127,21 @@ export default function DocumentEditor({
 				</pre>
 			</details>
 		</div>
+	);
+}
+
+export default function DocumentEditor({
+	document,
+	pageTitle,
+	onChange,
+}: {
+	document: PageDocument;
+	pageTitle: string;
+	onChange: (next: PageDocument) => void;
+}) {
+	return (
+		<BlockCollapseProvider>
+			<DocumentEditorBody document={document} pageTitle={pageTitle} onChange={onChange} />
+		</BlockCollapseProvider>
 	);
 }

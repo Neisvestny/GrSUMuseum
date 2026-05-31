@@ -8,6 +8,7 @@ import { EmptyState } from '../design-system/States';
 import AlternatingBlocks from '../patterns/AlternatingBlocks';
 import MediaStrip from '../patterns/MediaStrip';
 import TextImagePanel from '../patterns/TextImagePanel';
+import { alternatingItemsForRender } from '../../lib/alternating-block';
 
 type Props = {
 	document: PageDocument;
@@ -110,26 +111,17 @@ function AlternatingBlock({ block, pageTitle }: { block: BlockNode; pageTitle: s
 		return renderTextImageContent(block, pageTitle);
 	}
 
-	const text = typeof block.payload.text === 'string' ? block.payload.text : '';
-	const img =
-		typeof block.payload.image === 'string'
-			? block.payload.image
-			: typeof block.payload.img === 'string'
-				? block.payload.img
-				: undefined;
+	const items = alternatingItemsForRender(block.payload);
+	if (items.length === 0) return null;
 
-	if (text && img) {
-		return (
-			<TextImagePanel
-				title={pageTitle}
-				text={text}
-				imageSrc={img}
-				imageAlt={pageTitle}
-			/>
-		);
-	}
-
-	return <AlternatingBlocks blocks={[{ text, img }]} />;
+	return (
+		<AlternatingBlocks
+			blocks={items.map((item) => ({
+				text: item.text,
+				img: item.image,
+			}))}
+		/>
+	);
 }
 
 function TabsBlock({ block, pageTitle }: { block: BlockNode; pageTitle: string }) {

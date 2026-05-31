@@ -17,9 +17,9 @@ export default function SectionMenuPage({ title, items }: Props) {
 
 	return (
 		<div className="w-screen h-screen bg-white flex flex-col">
-			<main className="flex-1 flex flex-col items-center justify-center gap-8 px-16">
+			<main className="flex-1 flex flex-col items-center justify-center gap-8 px-4 md:px-16">
 				<header className="text-center">
-					<p className="text-gray-500 text-2xl font-bold">{title}</p>
+					<p className="text-gray-500 text-xl md:text-2xl font-bold">{title}</p>
 				</header>
 
 				<div className="flex flex-col gap-5 w-full max-w-3xl">
@@ -33,7 +33,7 @@ export default function SectionMenuPage({ title, items }: Props) {
 							}}
 							disabled={item.disabled || !item.path}
 							size="lg"
-							className="w-full h-36 flex items-center justify-center text-2xl text-center px-4"
+							className="w-full h-auto min-h-24 md:h-36 py-4 flex items-center justify-center text-xl md:text-2xl text-center px-4"
 						>
 							{item.label}
 						</Button>

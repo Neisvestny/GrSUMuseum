@@ -1,4 +1,5 @@
 import { updateBlockPayload } from '../../../../../lib/document-tree';
+import { blockSummary } from '../../../../../lib/block-summary';
 import type { BlockNode, PageDocument } from '@museum/document';
 import AlternatingBlockEditor from './AlternatingBlockEditor';
 import MediaStripBlockEditor from './MediaStripBlockEditor';
@@ -62,7 +63,12 @@ export default function BlockEditor({
 	if (block.type === 'tab') return null;
 
 	return (
-		<SortableBlockShell id={block.id} type={block.type} onRemove={onRemove}>
+		<SortableBlockShell
+			id={block.id}
+			type={block.type}
+			summary={blockSummary(block)}
+			onRemove={onRemove}
+		>
 			{body}
 		</SortableBlockShell>
 	);

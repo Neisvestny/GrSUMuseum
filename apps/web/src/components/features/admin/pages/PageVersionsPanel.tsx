@@ -11,6 +11,7 @@ import { ApiError } from '../../../../shared/api/client';
 import BaseModal from '../../../design-system/BaseModal';
 import BlockRenderer from '../../../cms/BlockRenderer';
 import AdminButton from '../ui/AdminButton';
+import { useAdminConfirm } from '../ui/AdminConfirmContext';
 import { useAdminToast } from '../ui/AdminToastContext';
 
 type Props = {
@@ -39,6 +40,7 @@ export default function PageVersionsPanel({
 	onRevertToPublished,
 }: Props) {
 	const toast = useAdminToast();
+	const { confirm } = useAdminConfirm();
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const [previewTitle, setPreviewTitle] = useState('');
 	const [previewDocument, setPreviewDocument] = useState<PageDocument | null>(null);
@@ -58,9 +60,12 @@ export default function PageVersionsPanel({
 	};
 
 	const handleRestoreVersion = async (versionId: number, label: string) => {
-		const ok = confirm(
-			`Восстановить черновик из снимка «${label}»?\n\nТекущие несохранённые правки в редакторе будут заменены. После восстановления нажмите «Сохранить черновик», если нужно зафиксировать изменения в базе.`,
-		);
+		const ok = await confirm({
+			title: 'Восстановить версию?',
+			message: `Восстановить черновик из снимка «${label}»?\n\nТекущие несохранённые правки в редакторе будут заменены. После восстановления нажмите «Сохранить черновик», если нужно зафиксировать изменения в базе.`,
+			confirmLabel: 'Восстановить',
+			variant: 'warning',
+		});
 		if (!ok) return;
 		try {
 			const refreshed = await restorePageVersion(draft.slug, versionId);
@@ -71,11 +76,15 @@ export default function PageVersionsPanel({
 		}
 	};
 
-	const handleRevertPublished = () => {
+	const handleRevertPublished = async () => {
 		if (!draft.publishedDocument) return;
-		const ok = confirm(
-			'Подставить в редактор содержимое, которое сейчас опубликовано на киоске?\n\nЭто не создаёт новую запись в истории — только меняет черновик в интерфейсе. Сохраните черновик, чтобы записать в базу.',
-		);
+		const ok = await confirm({
+			title: 'Подставить опубликованное?',
+			message:
+				'Подставить в редактор содержимое, которое сейчас опубликовано на киоске?\n\nЭто не создаёт новую запись в истории — только меняет черновик в интерфейсе. Сохраните черновик, чтобы записать в базу.',
+			confirmLabel: 'Подставить',
+			variant: 'primary',
+		});
 		if (!ok) return;
 		onRevertToPublished();
 		toast.success('В редактор подставлена опубликованная версия');
@@ -107,6 +116,7 @@ export default function PageVersionsPanel({
 								type="button"
 								size="sm"
 								variant="secondary"
+								className="w-full sm:w-auto"
 								disabled={loadingPreview || saving}
 								onClick={() =>
 									void openPreview('На киоске сейчас', async () => draft.publishedDocument!)
@@ -118,8 +128,9 @@ export default function PageVersionsPanel({
 								type="button"
 								size="sm"
 								variant="secondary"
+								className="w-full sm:w-auto"
 								disabled={saving}
-								onClick={handleRevertPublished}
+								onClick={() => void handleRevertPublished()}
 							>
 								В черновик
 							</AdminButton>
@@ -156,6 +167,7 @@ export default function PageVersionsPanel({
 									type="button"
 									size="sm"
 									variant="secondary"
+									className="w-full sm:w-auto"
 									disabled={loadingPreview || saving}
 									onClick={() =>
 										void openPreview(label, () =>
@@ -169,6 +181,7 @@ export default function PageVersionsPanel({
 									type="button"
 									size="sm"
 									variant="primary"
+									className="w-full sm:w-auto"
 									disabled={saving}
 									onClick={() => void handleRestoreVersion(v.id, label)}
 								>

@@ -6,6 +6,7 @@ import MenuPanel from '../components/features/admin/menu/MenuPanel';
 import PagesPanel from '../components/features/admin/pages/PagesPanel';
 import PeoplePanel from '../components/features/admin/people/PeoplePanel';
 import TaxonomyPanel from '../components/features/admin/taxonomy/TaxonomyPanel';
+import { AdminConfirmProvider } from '../components/features/admin/ui/AdminConfirmContext';
 import { AdminToastProvider } from '../components/features/admin/ui/AdminToastContext';
 import { signOut } from '../lib/auth-client';
 
@@ -39,11 +40,35 @@ function PanelRouter({ sectionId }: { sectionId: SectionId }) {
 export default function AdminPanel() {
 	const navigate = useNavigate();
 	const [activeId, setActiveId] = useState<SectionId>(SECTIONS[0].id);
+	const [sidebarOpen, setSidebarOpen] = useState(false);
+
+	const selectSection = (id: SectionId) => {
+		setActiveId(id);
+		setSidebarOpen(false);
+	};
 
 	return (
 		<AdminToastProvider>
+			<AdminConfirmProvider>
 			<div className="relative w-screen h-screen bg-gradient-to-br from-blue-50 to-white flex overflow-hidden">
-				<aside className="w-64 shrink-0 h-full flex flex-col bg-white/80 backdrop-blur-md border-r border-blue-100 z-10">
+				{sidebarOpen && (
+					<button
+						type="button"
+						className="fixed inset-0 bg-black/30 z-10 md:hidden"
+						aria-label="Закрыть меню"
+						onClick={() => setSidebarOpen(false)}
+					/>
+				)}
+
+				<aside
+					className={`
+						fixed inset-y-0 left-0 z-20 w-64 h-full flex flex-col
+						bg-white/80 backdrop-blur-md border-r border-blue-100
+						transform transition-transform duration-200 ease-out
+						md:static md:shrink-0 md:translate-x-0
+						${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+					`}
+				>
 					<div className="px-6 py-5 border-b border-blue-100 space-y-3">
 						<button
 							type="button"
@@ -85,7 +110,7 @@ export default function AdminPanel() {
 								return (
 									<button
 										key={s.id}
-										onClick={() => setActiveId(s.id)}
+										onClick={() => selectSection(s.id)}
 										className={`
                                         w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left
                                         transition-all duration-150 active:scale-95
@@ -119,8 +144,18 @@ export default function AdminPanel() {
 					</nav>
 				</aside>
 
-				<main className="flex-1 flex flex-col overflow-hidden">
-					<header className="px-8 py-4 bg-white/60 backdrop-blur-md border-b border-blue-100 shrink-0 flex items-center gap-4">
+				<main className="flex-1 flex flex-col overflow-hidden min-w-0">
+					<header className="px-4 md:px-8 py-4 bg-white/60 backdrop-blur-md border-b border-blue-100 shrink-0 flex items-center gap-4">
+						<button
+							type="button"
+							className="md:hidden shrink-0 p-2 rounded-lg text-blue-800 hover:bg-blue-50 transition-colors"
+							aria-label="Открыть меню"
+							onClick={() => setSidebarOpen(true)}
+						>
+							<svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2">
+								<path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
+							</svg>
+						</button>
 						{(() => {
 							const s = SECTIONS.find((s) => s.id === activeId)!;
 							return (
@@ -137,7 +172,7 @@ export default function AdminPanel() {
 						})()}
 					</header>
 
-					<div className="flex-1 overflow-y-auto px-8 py-6">
+					<div className="flex-1 overflow-y-auto px-4 py-4 md:px-8 md:py-6">
 						<AnimatePresence mode="wait">
 							<motion.div
 								key={activeId}
@@ -152,6 +187,7 @@ export default function AdminPanel() {
 					</div>
 				</main>
 			</div>
+			</AdminConfirmProvider>
 		</AdminToastProvider>
 	);
 }
