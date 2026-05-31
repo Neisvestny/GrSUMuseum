@@ -5,6 +5,9 @@ import {
 	guessMimeFromName,
 	isImageMime,
 	isVideoMime,
+	externalLinkRelPath,
+	guessExternalMime,
+	parseExternalLinkRelPath,
 	type MediaRoot,
 	normalizeRel,
 	physicalRoot,
@@ -32,6 +35,7 @@ export interface MediaAssetDto {
 export interface BrowseFileAsset {
 	id: number;
 	title: string | null;
+	alt: string | null;
 	mimeType: string;
 	showInPhotoGallery: boolean;
 	showInVideoGallery: boolean;
@@ -79,6 +83,7 @@ export interface AssetMetadataPatch {
 	tags?: string[];
 	duration?: string | null;
 	is_external?: boolean;
+	src?: string;
 }
 
 export interface RegisterLinkInput {
@@ -156,13 +161,20 @@ function browseAssetFromRow(row: {
 	src: string;
 	mimeType: string;
 	title: string | null;
+	alt?: string | null;
 	metadata: Prisma.JsonValue;
 }): BrowseFileAsset {
-	const dto = assetFromRow({ ...row, alt: null, width: null, height: null });
+	const dto = assetFromRow({
+		...row,
+		alt: row.alt ?? null,
+		width: null,
+		height: null,
+	});
 	const meta = dto.metadata ?? {};
 	return {
 		id: dto.id,
 		title: dto.title,
+		alt: dto.alt,
 		mimeType: dto.mimeType,
 		showInPhotoGallery: dto.showInPhotoGallery,
 		showInVideoGallery: dto.showInVideoGallery,
@@ -278,10 +290,13 @@ export class MediaService {
 		const src = input.src.trim();
 		if (!src) throw new HttpError(StatusCodes.BAD_REQUEST, ApiMessage.SRC_REQUIRED);
 
+		const rootHint = input.root;
 		const mimeType = input.is_external
-			? 'video/youtube'
+			? guessExternalMime(src, rootHint ?? 'files')
 			: guessMimeFromName(src);
-		const root = input.root ?? (isVideoMime(mimeType) ? 'videos' : 'files');
+		const root: MediaRoot =
+			rootHint ??
+			(isVideoMime(mimeType) ? 'videos' : isImageMime(mimeType) ? 'images' : 'files');
 		const defaults = defaultGalleryFlags(root, mimeType);
 
 		const metadata: Record<string, unknown> = {
@@ -345,8 +360,9 @@ export class MediaService {
 		const row = await this.prisma.mediaAsset.update({
 			where: { id },
 			data: {
-				title: patch.title?.trim(),
-				alt: patch.alt?.trim(),
+				...(patch.title !== undefined ? { title: patch.title.trim() || null } : {}),
+				...(patch.alt !== undefined ? { alt: patch.alt.trim() || null } : {}),
+				...(patch.src !== undefined ? { src: patch.src.trim() } : {}),
 				metadata: meta as Prisma.InputJsonValue,
 			},
 		});
@@ -355,7 +371,8 @@ export class MediaService {
 
 	async browse(root: MediaRoot, relDir: string): Promise<BrowseEntryDto[]> {
 		const { listDir } = await import('../lib/media-storage.js');
-		const entries = await listDir(root, relDir);
+		const normalizedDir = normalizeRel(relDir);
+		const entries = await listDir(root, normalizedDir);
 		const out: BrowseEntryDto[] = [];
 
 		for (const entry of entries) {
@@ -373,10 +390,33 @@ export class MediaService {
 					src: asset.src,
 					mimeType: asset.mimeType,
 					title: asset.title,
+					alt: asset.alt,
 					metadata: asset.metadata as Prisma.JsonValue,
 				}),
 			});
 		}
+
+		if (!normalizedDir) {
+			const externalRows = await this.prisma.mediaAsset.findMany({
+				where: { deletedAt: null },
+				orderBy: { id: 'desc' },
+			});
+			for (const row of externalRows) {
+				const meta = parseMetadata(row.metadata);
+				if (!meta.is_external || meta.root !== root) continue;
+				const displayName =
+					row.title?.trim() ||
+					(row.src.length > 64 ? `${row.src.slice(0, 61)}…` : row.src);
+				out.push({
+					name: displayName,
+					kind: 'file',
+					relPath: externalLinkRelPath(row.id),
+					url: row.src,
+					asset: browseAssetFromRow(row),
+				});
+			}
+		}
+
 		return out;
 	}
 

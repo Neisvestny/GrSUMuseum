@@ -32,6 +32,7 @@ adminMediaRouter.use(requireAuth);
 adminMediaRouter.get('/roots', controller.getRoots);
 adminMediaRouter.get('/browse', controller.browse);
 adminMediaRouter.get('/search', controller.search);
+adminMediaRouter.get('/remote-meta', controller.remoteMeta);
 adminMediaRouter.patch('/assets/:id', controller.updateAsset);
 adminMediaRouter.post('/assets/link', controller.registerLink);
 adminMediaRouter.patch('/gallery/photos/reorder', controller.reorderPhotos);

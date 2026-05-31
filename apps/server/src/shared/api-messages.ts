@@ -17,6 +17,7 @@ export const ApiMessage = {
 	VERSION_ID_MUST_BE_NUMBER: 'versionId должен быть числом',
 	DOCUMENT_VERSION_REQUIRED: 'documentVersion обязателен',
 	FILE_NOT_FOUND: 'Файл не найден',
+	EXTERNAL_LINK_IMMUTABLE: 'Внешнюю ссылку нельзя перемещать или переименовывать',
 	YEAR_AND_ORDERED_IDS_REQUIRED: 'year и orderedIds обязательны',
 	ORDERED_IDS_REQUIRED: 'orderedIds обязателен',
 

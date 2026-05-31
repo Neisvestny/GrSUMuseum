@@ -15,7 +15,6 @@ import {
 	moveMediaPath,
 	publicUrlFor,
 	renameMediaPath,
-	updateMediaAsset,
 	uploadMediaByUrl,
 	uploadMediaFiles,
 	type MediaBrowseAsset,
@@ -25,7 +24,8 @@ import {
 import { ApiError } from '../../../../shared/api/client';
 import AdminButton from '../ui/AdminButton';
 import MediaPreviewThumb from '../ui/MediaPreviewThumb';
-import { adminInputClass, adminLabelClass } from '../ui/adminFormStyles';
+import { adminInputClass } from '../ui/adminFormStyles';
+import AssetEditorModal from './AssetEditorModal';
 
 const ROOTS: Array<{ id: MediaRoot; label: string; icon: string }> = [
 	{ id: 'images', label: 'Изображения', icon: '🖼️' },
@@ -406,7 +406,8 @@ export default function FileManager({
 				</div>
 
 				{editingAsset && (
-					<AssetEditor
+					<AssetEditorModal
+						open
 						root={root}
 						entry={editingAsset.entry}
 						asset={editingAsset.asset}
@@ -416,173 +417,6 @@ export default function FileManager({
 				)}
 			</div>
 		</DndContext>
-	);
-}
-
-function AssetEditor({
-	root,
-	entry,
-	asset,
-	onClose,
-	onSaved,
-}: {
-	root: MediaRoot;
-	entry: MediaBrowseEntry;
-	asset: MediaBrowseAsset;
-	onClose: () => void;
-	onSaved: () => void;
-}) {
-	const [title, setTitle] = useState(asset.title ?? entry.name);
-	const [showPhoto, setShowPhoto] = useState(asset.showInPhotoGallery);
-	const [showVideo, setShowVideo] = useState(asset.showInVideoGallery);
-	const [year, setYear] = useState(String(asset.year ?? new Date().getFullYear()));
-	const [annotation, setAnnotation] = useState(asset.annotation);
-	const [description, setDescription] = useState(asset.description);
-	const [tags, setTags] = useState(asset.tags.join(', '));
-	const [duration, setDuration] = useState(asset.duration ?? '');
-	const [busy, setBusy] = useState(false);
-	const [err, setErr] = useState<string | null>(null);
-
-	const url = entry.url ?? publicUrlFor(root, entry.relPath);
-	const isImage = asset.mimeType.startsWith('image/');
-	const isVideo = asset.mimeType.startsWith('video/');
-
-	const save = async () => {
-		setBusy(true);
-		setErr(null);
-		try {
-			await updateMediaAsset(asset.id, {
-				title: title.trim(),
-				showInPhotoGallery: showPhoto,
-				showInVideoGallery: showVideo,
-				year: isImage ? Number(year) || 0 : undefined,
-				annotation: isImage ? annotation : undefined,
-				description: isVideo ? description : undefined,
-				tags: isVideo
-					? tags
-							.split(',')
-							.map((t) => t.trim())
-							.filter(Boolean)
-					: undefined,
-				duration: isVideo ? duration || null : undefined,
-				is_external: asset.is_external,
-			});
-			onSaved();
-		} catch (e) {
-			setErr(errorMessage(e, 'Не удалось сохранить'));
-		} finally {
-			setBusy(false);
-		}
-	};
-
-	return (
-		<div className="bg-white border-2 border-blue-200 rounded-2xl p-5 shadow-lg">
-			<div className="flex items-start justify-between gap-4 mb-4">
-				<div>
-					<h3 className="text-blue-900 font-bold">Свойства файла</h3>
-					<p className="text-xs text-gray-400 mt-1 break-all">{url}</p>
-				</div>
-				<AdminButton size="sm" variant="secondary" onClick={onClose}>
-					Закрыть
-				</AdminButton>
-			</div>
-
-			{err && <p className="text-sm text-red-600 mb-3">{err}</p>}
-
-			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div className="flex flex-col gap-3">
-					{isImage && (
-						<img
-							src={url}
-							alt={title}
-							className="w-full max-h-48 object-contain rounded-xl border border-blue-100 bg-blue-50"
-						/>
-					)}
-					<label>
-						<span className={adminLabelClass}>Название</span>
-						<input className={adminInputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
-					</label>
-					<label className="flex items-center gap-2 cursor-pointer">
-						<input
-							type="checkbox"
-							checked={showPhoto}
-							onChange={(e) => setShowPhoto(e.target.checked)}
-							className="w-4 h-4"
-						/>
-						<span className="text-sm font-semibold text-blue-800">Показывать в фотогалерее</span>
-					</label>
-					<label className="flex items-center gap-2 cursor-pointer">
-						<input
-							type="checkbox"
-							checked={showVideo}
-							onChange={(e) => setShowVideo(e.target.checked)}
-							className="w-4 h-4"
-						/>
-						<span className="text-sm font-semibold text-blue-800">Показывать в видеогалерее</span>
-					</label>
-				</div>
-
-				<div className="flex flex-col gap-3">
-					{isImage && (
-						<>
-							<label>
-								<span className={adminLabelClass}>Год (фотогалерея)</span>
-								<input
-									className={adminInputClass}
-									type="number"
-									value={year}
-									onChange={(e) => setYear(e.target.value)}
-								/>
-							</label>
-							<label>
-								<span className={adminLabelClass}>Подпись</span>
-								<textarea
-									className={`${adminInputClass} h-20 resize-none`}
-									value={annotation}
-									onChange={(e) => setAnnotation(e.target.value)}
-								/>
-							</label>
-						</>
-					)}
-					{isVideo && (
-						<>
-							<label>
-								<span className={adminLabelClass}>Описание</span>
-								<textarea
-									className={`${adminInputClass} h-20 resize-none`}
-									value={description}
-									onChange={(e) => setDescription(e.target.value)}
-								/>
-							</label>
-							<label>
-								<span className={adminLabelClass}>Теги (через запятую)</span>
-								<input className={adminInputClass} value={tags} onChange={(e) => setTags(e.target.value)} />
-							</label>
-							<label>
-								<span className={adminLabelClass}>Длительность</span>
-								<input
-									className={adminInputClass}
-									value={duration}
-									onChange={(e) => setDuration(e.target.value)}
-									placeholder="12:34"
-								/>
-							</label>
-						</>
-					)}
-					{!isImage && !isVideo && (
-						<p className="text-sm text-gray-500">
-							Документ доступен по ссылке. Галереи — только для фото и видео.
-						</p>
-					)}
-				</div>
-			</div>
-
-			<div className="flex gap-2 mt-4">
-				<AdminButton variant="primary" disabled={busy} onClick={() => void save()}>
-					{busy ? 'Сохранение…' : 'Сохранить'}
-				</AdminButton>
-			</div>
-		</div>
 	);
 }
 
@@ -606,9 +440,10 @@ function EntryRow({
 	const [busy, setBusy] = useState(false);
 
 	const isFolder = entry.kind === 'dir';
+	const isExternal = Boolean(entry.asset?.is_external);
 	const url = entry.url ?? publicUrlFor(root, entry.relPath);
 
-	const drag = useDraggable({ id: entry.relPath, disabled: isFolder });
+	const drag = useDraggable({ id: entry.relPath, disabled: isFolder || isExternal });
 	const drop = useDroppable({ id: `dir:${entry.relPath}`, disabled: !isFolder });
 
 	return (
@@ -667,6 +502,9 @@ function EntryRow({
 				{!isFolder && (
 					<div className="text-xs text-gray-400 truncate flex flex-wrap gap-2 mt-0.5">
 						<span>{url}</span>
+						{isExternal && (
+							<span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 rounded">ссылка</span>
+						)}
 						{entry.asset?.showInPhotoGallery && (
 							<span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 rounded">фото</span>
 						)}
@@ -683,9 +521,11 @@ function EntryRow({
 					</AdminButton>
 				)}
 				{isFolder && <div ref={drop.setNodeRef} className="text-[10px] text-blue-400 px-1">drop</div>}
-				<AdminButton size="sm" variant="secondary" onClick={() => setRenaming(true)}>
-					…
-				</AdminButton>
+				{!isExternal && (
+					<AdminButton size="sm" variant="secondary" onClick={() => setRenaming(true)}>
+						…
+					</AdminButton>
+				)}
 				<AdminButton size="sm" variant="danger" onClick={onDelete}>
 					✕
 				</AdminButton>

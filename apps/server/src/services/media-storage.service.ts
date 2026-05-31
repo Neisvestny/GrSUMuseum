@@ -2,12 +2,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { StatusCodes } from 'http-status-codes';
 import { decodeUploadFilename } from '../lib/decode-upload-filename.js';
+import { fetchYoutubeMeta } from '../lib/remote-video-meta.js';
 import {
 	isMediaRoot,
 	normalizeRel,
 	publicUrl,
 	resolveInsideRoot,
 	uniqueTargetPath,
+	parseExternalLinkRelPath,
 	type MediaRoot,
 } from '../lib/media-storage.js';
 import { ApiMessage } from '../shared/api-messages.js';
@@ -48,6 +50,9 @@ export class MediaStorageService {
 	}
 
 	async rename(root: MediaRoot, relPath: string, newName: string): Promise<string> {
+		if (parseExternalLinkRelPath(relPath) !== null) {
+			throw new HttpError(StatusCodes.BAD_REQUEST, ApiMessage.EXTERNAL_LINK_IMMUTABLE);
+		}
 		const cleanedPath = requireNonEmptyString(relPath, ApiMessage.PATH_REQUIRED);
 		const safeName = requireSafePathSegment(newName, ApiMessage.NEW_NAME_REQUIRED);
 		const normalizedPath = normalizeRel(cleanedPath);
@@ -70,6 +75,9 @@ export class MediaStorageService {
 		toDir: string,
 		newName?: string,
 	): Promise<string> {
+		if (parseExternalLinkRelPath(relPath) !== null) {
+			throw new HttpError(StatusCodes.BAD_REQUEST, ApiMessage.EXTERNAL_LINK_IMMUTABLE);
+		}
 		const cleanedPath = requireNonEmptyString(relPath, ApiMessage.PATH_REQUIRED);
 		const normalizedPath = normalizeRel(cleanedPath);
 		const normalizedToDir = normalizeRel(toDir);
@@ -94,6 +102,15 @@ export class MediaStorageService {
 	}
 
 	async deleteItem(root: MediaRoot, relPath: string): Promise<void> {
+		const linkId = parseExternalLinkRelPath(relPath);
+		if (linkId !== null) {
+			const ok = await this.media.softDeleteAsset(linkId);
+			if (!ok) {
+				throw new HttpError(StatusCodes.NOT_FOUND, ApiMessage.NOT_FOUND);
+			}
+			return;
+		}
+
 		const cleanedPath = requireNonEmptyString(relPath, ApiMessage.PATH_REQUIRED);
 		const normalizedPath = normalizeRel(cleanedPath);
 
@@ -153,15 +170,18 @@ export class MediaStorageService {
 		const trimmedUrl = requireNonEmptyString(url, ApiMessage.URL_REQUIRED);
 
 		if (/^https?:\/\//i.test(trimmedUrl)) {
+			const meta = await fetchYoutubeMeta(trimmedUrl);
 			const asset = await this.media.registerLink({
 				src: trimmedUrl,
 				root,
-				title: filename?.trim() || trimmedUrl,
+				title: filename?.trim() || meta?.title || trimmedUrl,
+				duration: meta?.duration,
 				is_external: true,
+				showInPhotoGallery: root === 'images',
 				showInVideoGallery: root === 'videos',
 			});
 			return {
-				name: filename?.trim() || trimmedUrl,
+				name: filename?.trim() || meta?.title || trimmedUrl,
 				relPath: '',
 				url: trimmedUrl,
 				assetId: asset.id,

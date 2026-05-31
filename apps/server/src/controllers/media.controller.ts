@@ -6,6 +6,7 @@ import {
 	publicBaseUrl,
 	type MediaRoot,
 } from '../lib/media-storage.js';
+import { fetchYoutubeMeta } from '../lib/remote-video-meta.js';
 import type { MediaService } from '../services/media.service.js';
 import { MediaStorageService } from '../services/media-storage.service.js';
 import { ApiMessage } from '../shared/api-messages.js';
@@ -55,6 +56,20 @@ export class MediaController {
 		}
 	};
 
+	remoteMeta = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+		try {
+			const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
+			if (!url) {
+				res.json({});
+				return;
+			}
+			const meta = await fetchYoutubeMeta(url);
+			res.json(meta ?? {});
+		} catch (err) {
+			next(err);
+		}
+	};
+
 	updateAsset = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
 		const id = Number(req.params.id);
 		if (!Number.isFinite(id)) {
@@ -86,6 +101,7 @@ export class MediaController {
 						: undefined,
 				is_external:
 					typeof body.is_external === 'boolean' ? body.is_external : undefined,
+				src: typeof body.src === 'string' ? body.src : undefined,
 			});
 			if (!row) {
 				next(new HttpError(StatusCodes.NOT_FOUND, ApiMessage.FILE_NOT_FOUND));

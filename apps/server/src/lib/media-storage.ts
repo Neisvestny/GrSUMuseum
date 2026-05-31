@@ -130,6 +130,28 @@ export function isVideoMime(mime: string): boolean {
 	return mime.startsWith('video/');
 }
 
+/** Virtual relPath prefix for external URL assets in browse listings. */
+export const EXTERNAL_LINK_PREFIX = '__link__';
+
+export function externalLinkRelPath(assetId: number): string {
+	return `${EXTERNAL_LINK_PREFIX}/${assetId}`;
+}
+
+export function parseExternalLinkRelPath(relPath: string): number | null {
+	const match = normalizeRel(relPath).match(/^__link__\/(\d+)$/);
+	if (!match) return null;
+	const id = Number(match[1]);
+	return Number.isFinite(id) ? id : null;
+}
+
+export function guessExternalMime(src: string, root: MediaRoot): string {
+	const fromName = guessMimeFromName(src);
+	if (fromName !== 'application/octet-stream') return fromName;
+	if (root === 'images') return 'image/jpeg';
+	if (root === 'videos') return 'video/mp4';
+	return 'application/octet-stream';
+}
+
 /** All src URL variants that may be stored for a media asset. */
 export function srcVariants(root: MediaRoot, relPath: string): string[] {
 	const cleaned = normalizeRel(relPath);

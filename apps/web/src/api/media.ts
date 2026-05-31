@@ -5,6 +5,7 @@ export type MediaRoot = 'images' | 'videos' | 'files';
 export type MediaBrowseAsset = {
 	id: number;
 	title: string | null;
+	alt: string | null;
 	mimeType: string;
 	showInPhotoGallery: boolean;
 	showInVideoGallery: boolean;
@@ -44,6 +45,7 @@ export type AssetMetadataPatch = {
 	tags?: string[];
 	duration?: string | null;
 	is_external?: boolean;
+	src?: string;
 };
 
 const API_BASE =
@@ -70,6 +72,16 @@ export async function searchMedia(
 ): Promise<{ files: Array<{ name: string; url: string; assetId: number }> }> {
 	const params = new URLSearchParams({ root, q });
 	return apiRequest(`/media/search?${params}`);
+}
+
+export type RemoteVideoMeta = {
+	title?: string;
+	duration?: string;
+};
+
+export async function fetchRemoteVideoMeta(url: string): Promise<RemoteVideoMeta> {
+	const params = new URLSearchParams({ url: url.trim() });
+	return apiRequest<RemoteVideoMeta>(`/media/remote-meta?${params}`);
 }
 
 export async function mkdirMedia(root: MediaRoot, dir: string, name: string): Promise<void> {
